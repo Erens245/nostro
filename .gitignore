@@ -12,3 +12,4 @@ target/
 .claude/
 skills-lock.json
 schemas/cache/
+demo/
