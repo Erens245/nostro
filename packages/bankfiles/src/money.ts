@@ -1,7 +1,8 @@
 // All money is integer. "Minor" means cents. "Base" means token units at
 // 6 decimals. A float never touches an amount in this package.
 
-import { createHash } from 'node:crypto';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 
 export const BASE_PER_CENT = 10_000n;
 
@@ -34,6 +35,11 @@ export function centsToBase(cents: bigint): bigint {
   return cents * BASE_PER_CENT;
 }
 
+/**
+ * Works in a browser as well as Node, so an approver's own device can re-read a
+ * payment file and confirm its hash, rather than trusting what a server shows.
+ */
 export function sha256Hex(data: string | Uint8Array): string {
-  return createHash('sha256').update(data).digest('hex');
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  return bytesToHex(sha256(bytes));
 }

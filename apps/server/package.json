@@ -1,0 +1,23 @@
+{
+  "name": "@nostro/server",
+  "version": "0.1.0",
+  "description": "Runs payment files through the contract, relays approvals and builds statements.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nostro/bankfiles": "*",
+    "borsh": "2.0.0",
+    "near-api-js": "7.4.0"
+  },
+  "devDependencies": {
+    "@noble/hashes": "2.2.0",
+    "@types/node": "26.6.6",
+    "typescript": "5.9.3"
+  }
+}
