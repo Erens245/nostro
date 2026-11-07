@@ -1,0 +1,20 @@
+Expected: opening 500.00, closing 16769.12
+
+LibOFX: ofxdump 0.10.5
+PASS  statement.ofx: read with no errors  (4 transactions)
+PASS  statement.ofx: ledger balance matches  (16769.12)
+PASS  statement.ofx: transactions add up to the closing balance  (16269.12)
+PASS  statement-220.ofx: read with no errors  (4 transactions)
+PASS  statement-220.ofx: ledger balance matches  (16769.12)
+PASS  statement-220.ofx: transactions add up to the closing balance  (16269.12)
+PASS  OFX: transaction ids are unique, so re-importing can spot duplicates
+
+AqBanking: 6.9.2
+PASS  MT940: imported  (exit 0)
+PASS  MT940: transactions add up to the closing balance  (4 transactions, net 16269.12)
+PASS  MT940: stored the closing balance  (16769.12)
+PASS  camt.053.001.08: imported  (exit 0)
+PASS  camt.053.001.08: transactions add up to the closing balance  (3 transactions, net 16269.12)
+PASS  camt.053.001.08: stored the closing balance  (500.00, 16769.12)
+
+All checks passed.

@@ -183,6 +183,25 @@ if (!existsSync(deploymentPath)) {
   }
 }
 
+// ---------- Real accounting software ----------
+
+const gnucash = process.env.GNUCASH_APP;
+const samples = join(root, 'proof');
+if (gnucash && existsSync(join(samples, 'statement.ofx'))) {
+  const run = spawnSync(process.execPath, [join(root, 'scripts', 'interop-gnucash.mjs'), gnucash, samples], {
+    encoding: 'utf8',
+  });
+  const passed = (run.stdout.match(/^PASS/gm) ?? []).length;
+  report(run.status === 0 ? 'PASS' : 'FAIL', 'GnuCash’s importers read our statements with the right balances', `${passed} checks`);
+} else {
+  const recorded = ['gnucash-interop.txt', 'gnucash-interop-sample.txt'].find((name) => existsSync(join(samples, name)));
+  report(
+    'SKIP',
+    'GnuCash’s importers read our statements',
+    `Set GNUCASH_APP to GnuCash's app folder to rerun this.${recorded ? ` A recorded run is in proof/${recorded}.` : ''}`,
+  );
+}
+
 // ---------- Live routing, with no money ----------
 
 try {

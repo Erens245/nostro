@@ -75,7 +75,8 @@ npm run preview
 | Gasless approvals | NEP-366 delegates signed in the browser. The relayer decodes each one and refuses anything but a permitted call |
 | Fee quotes | Real, live, from 1Click with `dry: true` |
 | Payouts through NEAR Intents | **Code path unit-tested, not yet run with real money.** NEAR Intents has no testnet |
-| Real ERP or accounting products | **Not yet tested.** No Xero, QuickBooks, SAP or Odoo has read these files. See `packages/bankfiles/README.md` |
+| Real accounting software | GnuCash's importers (LibOFX, AqBanking) read our OFX, MT940 and camt.053 from the command line, with balances correct to the cent. See `proof/` and `scripts/interop-gnucash.mjs` |
+| Xero, QuickBooks, SAP, Odoo | **Not tested.** Nor has a file been clicked through GnuCash's own import screens |
 | `npm run preview` | Simulated chain. Labelled as such |
 
 ## What NEAR does here

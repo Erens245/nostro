@@ -39,12 +39,13 @@ Tests that only read back our own output prove little, so:
 | Our OFX is readable | [`ofx-js`](https://www.npmjs.com/package/ofx-js) and [`node-ofx-parser`](https://www.npmjs.com/package/node-ofx-parser) |
 | Our MT940 is readable | [`mt940js`](https://www.npmjs.com/package/mt940js) |
 | Statements balance to the cent | 2,000 random statements through the rounding code, then 200 per format read back by those parsers, comparing opening, entries and closing |
+| Accounting software can import them | GnuCash's own importers: LibOFX 0.10.5 for OFX, AqBanking 6.9.2 for MT940 and camt.053. `scripts/interop-gnucash.mjs` checks the amounts and balances they read |
 
 ## What has not been proven
 
-- **No real ERP or accounting product has read these files yet.** Xero, QuickBooks, SAP, Odoo and GnuCash are untested. Passing a schema and a parser library is good evidence, not proof that a given importer accepts a file.
-- **No real ERP wrote the inputs either.** The fixtures come from libraries. A file from SAP may use parts of pain.001 those libraries don't.
-- **OFX `BANKID` is `NEAR`.** A strict importer may expect a numeric routing number. This is untested.
+- **Only GnuCash's parsers have read these files.** They ran from the command line, not through GnuCash's import screens. Xero, QuickBooks, SAP and Odoo are untested. Passing one product's parser is good evidence, not proof that another product accepts a file.
+- **No real ERP wrote the inputs.** The fixtures come from libraries. A file from SAP may use parts of pain.001 those libraries don't.
+- **OFX `BANKID` is `NEAR`.** LibOFX accepts it. A stricter importer may expect a numeric routing number.
 - **`pain.002.001.10` schema has one source.** See `schemas/README.md`.
 
 ## Limits
