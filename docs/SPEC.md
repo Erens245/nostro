@@ -11,9 +11,9 @@ nostro/
   packages/bankfiles/   Pure TypeScript: read payment files, write status and statement files. No chain code
   apps/server/          Node API: orchestrates runs, relayer, 1Click, statement building
   apps/web/             React portal (Vite)
-  fixtures/             Sample input files made by independent tools, plus expected outputs
-  schemas/              ISO 20022 XSDs
-  scripts/              deploy, demo, verify
+  fixtures/             Sample input files made by independent tools
+  schemas/              Fetches the ISO 20022 XSDs, pinned by hash. Their licence limits redistribution
+  scripts/              deploy, demo, verify, browser check
 ```
 
 npm workspaces. TypeScript strict mode. ESM. Node 26. No floats for money, ever: integers as `bigint` in code and decimal strings in JSON.
@@ -214,6 +214,8 @@ Both produce a `receiver` and an `amount` per line, so the contract treats them 
 | Intents | Mainnet | 1Click `depositAddress`, funded by `ft_transfer_call` to `intents.near` with `msg` set to that address | From the quote |
 
 Mainnet quote parameters: `swapType: EXACT_OUTPUT`, `depositType: INTENTS`, `recipientType: DESTINATION_CHAIN`, `refundType: ORIGIN_CHAIN`, `refundTo` the contract account, `slippageTolerance: 10`. Quotes are taken before approval, so the approver sees the final numbers and the contract stores the exact deposit addresses. `dry: true` powers previews. Every real quote needs human approval while this is a hackathon entry.
+
+`refundTo` must be an account that exists. If it doesn't, 1Click answers `Internal server error`, which looks like a problem with the quote types and isn't. Previews on testnet borrow `intents.near`. All four pairings of `INTENTS` and `ORIGIN_CHAIN` were accepted by dry quotes on 7 Nov 2026, with `INTENTS` deposits estimated at 12 seconds and `ORIGIN_CHAIN` at 22.
 
 ## Rules for the whole repo
 

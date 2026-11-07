@@ -570,11 +570,18 @@ export function createApi(deps: Deps) {
         contractId: config.contractId,
         tokenId: config.tokenId,
         company: config.company,
+        rpcUrl: config.rpcUrl,
         readOnly: isReadOnly(),
         demoKeys: config.demoKeys,
       });
     }
     if (method === 'GET' && path === '/api/overview') return sendJson(res, 200, await overview());
+    if (method === 'GET' && path === '/api/sign-context') {
+      const accountId = url.searchParams.get('accountId');
+      const publicKey = url.searchParams.get('publicKey');
+      if (!accountId || !publicKey) throw new HttpError(400, 'Give an accountId and a publicKey.');
+      return sendJson(res, 200, await chain.signContext(accountId, publicKey));
+    }
     if (method === 'POST' && path === '/api/preview') {
       return sendJson(res, 200, await preview(await readBody(req)));
     }

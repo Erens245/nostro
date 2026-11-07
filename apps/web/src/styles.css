@@ -1,0 +1,655 @@
+/* Reads like a bank's back office: paper, ink and ruled lines. Colour is kept
+   for what needs attention, and amounts line up in tabular figures. */
+
+:root {
+  color-scheme: light;
+  --paper: #f6f3ec;
+  --sheet: #fffdf8;
+  --ink: #1c2b3a;
+  --muted: #5e6670;
+  --rule: #dcd6c8;
+  --rule-strong: #b9b1a0;
+  --good: #1f5f4a;
+  --good-wash: #e3efe8;
+  --warn: #8a5a0a;
+  --warn-wash: #f7ecd5;
+  --bad: #8c2f2b;
+  --bad-wash: #f6e2df;
+  --accent: #1c2b3a;
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Charter, Georgia, serif;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+h2 {
+  margin: 2.25rem 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
+/* Shell */
+
+.shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.5rem 1.25rem;
+  background: var(--ink);
+  color: #e8e4da;
+}
+
+.brand {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-dark {
+  margin: 0 0 1.5rem;
+  color: var(--ink);
+}
+
+.company {
+  margin: 0 0 1.5rem;
+  font-size: 0.8125rem;
+  color: #a9b1ba;
+}
+
+.rail nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.rail nav a {
+  padding: 0.5rem 0.625rem;
+  border-radius: 3px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9375rem;
+}
+
+.rail nav a:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
+.rail nav a[aria-current='page'] {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.rail-foot {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+.who {
+  margin: 0;
+}
+
+.who-account {
+  margin: 0 0 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: #a9b1ba;
+  overflow-wrap: anywhere;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.network {
+  margin: 0.75rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgb(255 255 255 / 18%);
+  color: #e6c98a;
+}
+
+.main {
+  width: 100%;
+  max-width: 68rem;
+  padding: 2.5rem 3rem 4rem;
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.lead {
+  margin: 0.375rem 0 0;
+  max-width: 42rem;
+  color: var(--muted);
+}
+
+/* Money */
+
+.money {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.money-unit {
+  color: var(--muted);
+  margin-right: 0.0625em;
+}
+
+.money-cents {
+  color: var(--muted);
+}
+
+.money-large {
+  font-family: var(--serif);
+  font-size: 2.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.balance {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1.25rem;
+  padding: 1.75rem;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  margin: 0;
+}
+
+.facts dt,
+.field-label,
+.file-facts dt {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.facts dd,
+.file-facts dd {
+  margin: 0;
+}
+
+.file-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2.5rem;
+  margin: 1.5rem 0;
+  padding: 1rem 0;
+  border-block: 1px solid var(--rule);
+}
+
+/* Tables */
+
+table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  font-size: 0.9375rem;
+}
+
+th {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+td {
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+tr:last-child td {
+  border-bottom: 0;
+}
+
+.number {
+  text-align: right;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.8125rem;
+}
+
+/* Chips and notices */
+
+.chip {
+  display: inline-block;
+  padding: 0.0625rem 0.5rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip-good {
+  border-color: var(--good);
+  background: var(--good-wash);
+  color: var(--good);
+}
+
+.chip-warn {
+  border-color: var(--warn);
+  background: var(--warn-wash);
+  color: var(--warn);
+}
+
+.chip-bad {
+  border-color: var(--bad);
+  background: var(--bad-wash);
+  color: var(--bad);
+}
+
+.notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--rule-strong);
+  background: var(--sheet);
+}
+
+.notice-good {
+  border-color: var(--good);
+  background: var(--good-wash);
+}
+
+.notice-warn {
+  border-color: var(--warn);
+  background: var(--warn-wash);
+}
+
+.notice-bad {
+  border-color: var(--bad);
+  background: var(--bad-wash);
+}
+
+.notice-body {
+  margin-top: 0.125rem;
+  font-size: 0.9375rem;
+}
+
+.notice ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.125rem;
+}
+
+/* Forms and buttons */
+
+button {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--good);
+  outline-offset: 2px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.field {
+  display: block;
+  margin-bottom: 0.875rem;
+}
+
+.field-label {
+  display: block;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0 1.25rem;
+}
+
+.dates {
+  max-width: 28rem;
+}
+
+.form-card {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+}
+
+.form-card h2 {
+  margin-top: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.actions input {
+  flex: 1 1 14rem;
+  width: auto;
+}
+
+.actions p {
+  margin: 0;
+}
+
+/* Upload */
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 2.75rem 1.5rem;
+  border: 1.5px dashed var(--rule-strong);
+  border-radius: 3px;
+  background: var(--sheet);
+}
+
+.drop span {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.drop-active {
+  border-color: var(--good);
+  background: var(--good-wash);
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1.25rem 0;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+}
+
+.compare > div {
+  padding: 1.25rem 1.5rem;
+}
+
+.compare .field-label {
+  margin-bottom: 0.25rem;
+}
+
+.compare p {
+  margin-block: 0.25rem 0;
+}
+
+.compare-versus {
+  border-left: 1px solid var(--rule);
+}
+
+.compare-versus .money-large {
+  color: var(--muted);
+}
+
+/* Statements */
+
+.formats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.formats li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+}
+
+.formats li > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.decision {
+  margin-top: 1.5rem;
+  padding: 0.25rem 1.5rem 1.5rem;
+  background: var(--sheet);
+  border: 1px solid var(--rule-strong);
+}
+
+.decision h2 {
+  margin-top: 1rem;
+}
+
+/* Sign in */
+
+.sign-in,
+.centered {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.sign-in-card {
+  width: min(28rem, 100%);
+  padding: 2.25rem;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+}
+
+.sign-in-card h1 {
+  font-size: 1.5rem;
+}
+
+.sign-in-card form,
+.demo-roles {
+  margin-top: 1.5rem;
+}
+
+.role {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  text-align: left;
+}
+
+.role span {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* Narrow screens */
+
+@media (max-width: 52rem) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail {
+    padding: 1rem;
+  }
+
+  .rail nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .company {
+    margin-bottom: 0.75rem;
+  }
+
+  .rail-foot {
+    padding-top: 0.75rem;
+  }
+
+  .main {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .money-large {
+    font-size: 2.125rem;
+  }
+
+  .compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compare-versus {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  /* A table scrolls inside its box, so cells can keep to one line. */
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  th,
+  td {
+    white-space: nowrap;
+  }
+
+  td.mono {
+    overflow-wrap: normal;
+  }
+
+  .formats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button {
+    transition: border-color 120ms ease;
+  }
+}

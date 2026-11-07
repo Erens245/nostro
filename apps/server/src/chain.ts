@@ -17,9 +17,16 @@ export interface TxOutcome {
   failure?: string;
 }
 
+/** What a browser needs to sign a delegate action without its own RPC access. */
+export interface SignContext {
+  nonce: string;
+  blockHeight: string;
+}
+
 export interface Chain {
   view<T>(method: string, args?: Record<string, unknown>): Promise<T>;
   tokenBalance(accountId: string): Promise<bigint>;
+  signContext(accountId: string, publicKey: string): Promise<SignContext>;
   relay(signed: DecodedDelegate): Promise<TxOutcome>;
   settle(method: string, args: Record<string, unknown>, tgas: number): Promise<TxOutcome>;
 }
@@ -119,6 +126,19 @@ export class NearChain implements Chain {
       args: { account_id: accountId },
     });
     return BigInt(String(balance));
+  }
+
+  async signContext(accountId: string, publicKey: string): Promise<SignContext> {
+    const [key, block] = await Promise.all([
+      this.provider.viewAccessKey({
+        accountId,
+        publicKey,
+        finalityQuery: { finality: 'final' },
+      } as never),
+      this.provider.viewBlock({ finality: 'final' }),
+    ]);
+    const nonce = (key as unknown as { nonce: number | bigint | string }).nonce;
+    return { nonce: String(nonce), blockHeight: String(block.header.height) };
   }
 
   async relay(signed: DecodedDelegate): Promise<TxOutcome> {

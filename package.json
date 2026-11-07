@@ -13,6 +13,10 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "build": "npm run build --workspace apps/web",
+    "start": "npm start --workspace apps/server",
+    "preview": "node scripts/preview.ts",
+    "verify": "node scripts/verify.mjs"
   }
 }

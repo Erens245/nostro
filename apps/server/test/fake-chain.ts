@@ -19,6 +19,7 @@ export class FakeChain implements Chain {
   ledger: LedgerEntry[] = [];
   statements = new Map<string, { sha256: string; block: string }>();
   balance = 0n;
+  spentToday = 0n;
   tokenExtra = 0n;
   now = 1_794_000_000_000_000_000n;
   txCounter = 0;
@@ -55,9 +56,21 @@ export class FakeChain implements Chain {
     const result = ((): unknown => {
       switch (method) {
         case 'get_balances':
-          return { ledger: this.balance.toString(), available: this.balance.toString(), spent_today: '0' };
+          return {
+            ledger: this.balance.toString(),
+            available: this.balance.toString(),
+            spent_today: this.spentToday.toString(),
+          };
         case 'get_config':
-          return { owner: 'owner.testnet' };
+          return {
+            owner: 'owner.testnet',
+            token: 'usdc.testnet',
+            settlement_target: null,
+            required_approvals: 1,
+            per_payment_limit: '10000000000',
+            daily_limit: '50000000000',
+            payee_cooloff_ns: '0',
+          };
         case 'has_role':
           return this.roles[args['account_id'] as string] === args['role'];
         case 'get_run':
@@ -86,6 +99,11 @@ export class FakeChain implements Chain {
 
   async tokenBalance(): Promise<bigint> {
     return this.balance + this.tokenExtra;
+  }
+
+  async signContext(): Promise<{ nonce: string; blockHeight: string }> {
+    this.txCounter += 1;
+    return { nonce: String(this.txCounter), blockHeight: '1000' };
   }
 
   private outcome(events: ChainEvent[], failure?: string): TxOutcome {
@@ -186,6 +204,7 @@ export class FakeChain implements Chain {
         continue;
       }
       this.balance -= amount;
+      this.spentToday += amount;
       line.status = 'Sent';
       const seq = this.append('Debit', amount, run.id, index, line.e2e_hash);
       events.push({ event: 'line_sent', data: { line: index, seq } });
