@@ -184,8 +184,7 @@ log('Payees registered by the clerk and approved by the director', `${store.paye
 
 // ---------- A gasless clerk ----------
 
-const clerkState = await provider.viewAccount({ accountId: clerk.accountId } as never).catch(() => null);
-const clerkBalanceBefore = String((clerkState as { amount?: unknown } | null)?.amount ?? '');
+const clerkBalanceBefore = (await provider.viewAccount({ accountId: clerk.accountId })).amount;
 
 // ---------- The first file ----------
 
@@ -334,9 +333,11 @@ const verification = await json<Record<string, unknown>>(`/api/statements/verify
 proof.statement = verification.body;
 log('Statement ties to the token balance', JSON.stringify((verification.body as { tie: unknown }).tie));
 
-const clerkAfter = await provider.viewAccount({ accountId: clerk.accountId } as never).catch(() => null);
-const clerkBalanceAfter = String((clerkAfter as { amount?: unknown } | null)?.amount ?? '');
-log('The clerk spent no NEAR', clerkBalanceBefore === clerkBalanceAfter ? 'balance unchanged' : 'BALANCE CHANGED');
+const clerkBalanceAfter = (await provider.viewAccount({ accountId: clerk.accountId })).amount;
+if (clerkBalanceAfter !== clerkBalanceBefore) {
+  throw new Error(`The clerk's balance moved from ${clerkBalanceBefore} to ${clerkBalanceAfter}.`);
+}
+log('The clerk spent no NEAR', `balance stayed at ${clerkBalanceAfter} yoctoNEAR`);
 
 writeFileSync(join(proofDir, 'testnet-run.json'), `${JSON.stringify(proof, null, 2)}\n`);
 console.log('\nWrote proof/testnet-run.json');

@@ -130,15 +130,10 @@ export class NearChain implements Chain {
 
   async signContext(accountId: string, publicKey: string): Promise<SignContext> {
     const [key, block] = await Promise.all([
-      this.provider.viewAccessKey({
-        accountId,
-        publicKey,
-        finalityQuery: { finality: 'final' },
-      } as never),
+      this.provider.viewAccessKey({ accountId, publicKey, finalityQuery: { finality: 'final' } }),
       this.provider.viewBlock({ finality: 'final' }),
     ]);
-    const nonce = (key as unknown as { nonce: number | bigint | string }).nonce;
-    return { nonce: String(nonce), blockHeight: String(block.header.height) };
+    return { nonce: String(key.nonce), blockHeight: String(block.header.height) };
   }
 
   async relay(signed: DecodedDelegate): Promise<TxOutcome> {

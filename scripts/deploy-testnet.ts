@@ -163,10 +163,10 @@ say('staff now hold function-call keys only');
 await call(usdc.account, usdc.id, 'mint', { account_id: root, amount: (100_000n * USDC).toString() });
 await call(owner, usdc.id, 'ft_transfer_call', {
   receiver_id: company.id,
-  amount: (20_000n * USDC).toString(),
+  amount: (60_000n * USDC).toString(),
   msg: 'FUNDING',
 }, 1n, 100);
-say('account funded with 20,000 test USDC');
+say('account funded with 60,000 test USDC');
 
 // Each payee in the sample files gets a receiving account and a real-looking
 // route. The addresses are random and owned by nobody. They are only ever quoted.
