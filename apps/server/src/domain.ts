@@ -3,14 +3,16 @@
 
 import {
   centsToBase,
+  e2eHash,
   formatCents,
+  messageHash,
+  payeeKey,
   sha256Hex,
 } from '@nostro/bankfiles';
 import type {
   CanonicalLine,
   CanonicalRun,
   LineStatusInput,
-  PayeeAccount,
   StatementEntry,
   StatementInput,
   StatusCode,
@@ -53,6 +55,7 @@ export interface ChainRun {
 
 export interface ChainPayee {
   route_hash: string;
+  receiver: string | null;
   registered_by: string;
   approved_by: string | null;
   active_after: string;
@@ -89,21 +92,10 @@ export interface Payee {
   testnetReceiver?: string;
 }
 
-export const payeeKey = (account: PayeeAccount | string): string => {
-  const value = typeof account === 'string' ? account : account.value;
-  return sha256Hex(value.trim().toLowerCase().replace(/\s+/g, ''));
-};
-
 export const routeHash = (route: Route): string =>
   sha256Hex(`${route.chain}|${route.asset}|${route.address}`);
 
-const party = (run: CanonicalRun): string => run.debtorName ?? run.initiatingParty;
-
-export const messageHash = (run: CanonicalRun): string =>
-  sha256Hex(`${party(run)}|${run.messageId}`);
-
-export const e2eHash = (run: CanonicalRun, line: CanonicalLine): string =>
-  sha256Hex(`${party(run)}|${line.endToEndId}`);
+export { e2eHash, messageHash, payeeKey };
 
 // ---------- Submitting a run ----------
 
@@ -184,6 +176,7 @@ export const HOLD_REASONS: Record<string, { code: string; text: string }> = {
   payee_unknown: { code: 'AC01', text: 'Payee is not in the directory' },
   payee_unapproved: { code: 'AC06', text: 'Payee is waiting for approval' },
   payee_cooloff: { code: 'AC06', text: 'New or changed payee is in its cool-off period' },
+  receiver_mismatch: { code: 'AC01', text: 'Receiver is not the one approved for this payee' },
   over_payment_limit: { code: 'AM02', text: 'Payment is over the per-payment limit' },
   over_daily_limit: { code: 'AM02', text: 'Payment is over the daily limit' },
   insufficient_funds: { code: 'AM04', text: 'Not enough funds in the account' },

@@ -60,6 +60,8 @@ export interface RunDetail extends RunSummary {
   rejectedReason: string | null;
   issues: Issue[];
   lines: RunLine[];
+  /** As the server reports them. The browser reads the chain directly when it can. */
+  recordedLines: { e2e_hash: string; payee_key: string; amount: string }[];
 }
 
 export type PayeeState = 'unknown' | 'unapproved' | 'cooloff' | 'active';

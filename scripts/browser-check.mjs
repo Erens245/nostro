@@ -164,6 +164,15 @@ async function signIn(label) {
   await waitFor('Overview');
 }
 
+async function chooseFile(path) {
+  const { root } = await cdp.call('DOM.getDocument');
+  const { nodeId } = await cdp.call('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector: 'input[type=file]',
+  });
+  await cdp.call('DOM.setFileInputFiles', { nodeId, files: [path] });
+}
+
 const fixture = resolve(here, '..', 'fixtures', process.env.FIXTURE ?? 'pain.001.001.03.xml');
 
 try {
@@ -182,12 +191,7 @@ try {
   await step('a real payment file is read and priced', async () => {
     await goTo('new');
     await waitFor('Drop a payment file');
-    const { root } = await cdp.call('DOM.getDocument');
-    const { nodeId } = await cdp.call('DOM.querySelector', {
-      nodeId: root.nodeId,
-      selector: 'input[type=file]',
-    });
-    await cdp.call('DOM.setFileInputFiles', { nodeId, files: [fixture] });
+    await chooseFile(fixture);
     await waitFor('Submit for approval', 45_000);
     await waitFor('Lucia Marin');
     await shot('03-file-read');
@@ -242,6 +246,45 @@ try {
     await waitFor('The books match the chain');
     await waitFor('10,651');
     await shot('09-overview-after');
+  });
+
+  await step('uploading the same file again is refused', async () => {
+    await signIn('Finance clerk');
+    await goTo('new');
+    await waitFor('Drop a payment file');
+    await chooseFile(fixture);
+    await waitFor('This file has already been submitted', 45_000);
+    const disabled = await evaluate(
+      `[...document.querySelectorAll('button')].find((b) => b.innerText.startsWith('Submit for approval'))?.disabled`,
+    );
+    if (disabled !== true) throw new Error('The submit button is still enabled.');
+    await shot('11-duplicate-refused');
+  });
+
+  await step('a genuine file with altered recorded lines cannot be approved', async () => {
+    await cdp.call('Page.reload');
+    await waitFor('Overview');
+    await goTo('new');
+    await waitFor('Drop a payment file');
+    await chooseFile(resolve(here, '..', 'fixtures', 'pain.001.001.09.xml'));
+    await waitFor('Submit for approval', 45_000);
+    await waitFor('Lucia Marin');
+    await clickText('Submit for approval');
+    await waitFor('Waiting for approval', 30_000);
+
+    // The file is untouched. Only what is recorded to be paid has changed.
+    const reply = await fetch(`${base}/__simulate/tamper/2`);
+    if (!reply.ok) throw new Error('This server has no tamper hook, so this is not the preview.');
+
+    await signIn('Finance director');
+    await goTo('run/2');
+    await waitFor('Do not approve this run');
+    await waitFor('has a different amount on record');
+    const disabled = await evaluate(
+      `[...document.querySelectorAll('button')].find((b) => b.innerText.startsWith('Approve'))?.disabled`,
+    );
+    if (disabled !== true) throw new Error('The Approve button is still enabled.');
+    await shot('12-tamper-caught');
   });
 
   await step('the page stays usable on a phone', async () => {

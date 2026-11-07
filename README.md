@@ -94,12 +94,15 @@ Each has unit tests in `contract/src/tests.rs`.
 
 - **Four eyes.** The person who submitted a run can never approve it, and one person can't supply two approvals.
 - **Exact approval.** An approval names the SHA-256 of the file.
+- **Bound receivers.** On direct payments a payee can only be paid at the account approved for them, so a run can't name an approved payee and send the money elsewhere.
 - **Duplicates.** A file, or a single payment moved into a new file, can't be paid twice. Rejecting a run releases it for correction.
 - **Payee cool-off.** New or changed payee details lose their approval, which blunts "our bank details have changed" fraud.
 - **Limits.** Per-payment and daily caps, checked as money moves.
 - **Ledger.** Each debit and credit has a running balance, so a statement can be rebuilt from view calls alone. A statement can only be anchored if its closing balance matches the ledger.
 
 Only hashes go on chain. Names and account numbers stay off chain.
+
+The approver's browser adds one more check that the contract can't do, because it never sees the file. It re-reads the original file, then compares every recorded line with it: amount, payee and payment id. A matching file hash alone wouldn't be enough, since money follows the recorded lines. If they differ, the page says not to approve and the button stays disabled.
 
 ## Layout
 
@@ -137,6 +140,8 @@ node --env-file=.keys/testnet.env scripts/demo-testnet.ts
 - This is software, not a bank, and it is not a licensed payment service. It doesn't reach local bank accounts: payees must be willing to receive stablecoins.
 - USD only. Statements show USDC as USD at 1:1, and say so.
 - Public-chain payouts can be observed. The `confidentiality` quote option returned 401 without user authentication when tested, so private payouts aren't claimed. Use the NEAR Business export for sensitive runs.
+- The approver's check runs in code the portal serves, so a fully compromised server could serve a tampered page. A real deployment needs the portal hosted separately from the service holding the relayer and settler keys.
+- Through NEAR Intents each payment has a one-time deposit account, so the contract can't bind a receiver the way it does for direct payments. The destination is inside the 1Click quote. Checking that on the approver's device is planned, and not yet built.
 - Payee details are stored by the server as plain JSON. That's fine for a demo and not for production.
 - Demo sign-in hands out throwaway testnet keys, and only when `NOSTRO_DEMO_KEYS=yes` on testnet.
 

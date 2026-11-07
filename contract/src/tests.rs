@@ -115,7 +115,7 @@ fn line(e2e: char, payee: char, amount: u128) -> LineInput {
 
 fn add_payee(c: &mut Nostro, payee: char, now: u64) {
     ctx(clerk(), now, 0);
-    c.register_payee(hash(payee), hash('9'));
+    c.register_payee(hash(payee), hash('9'), Some(alice()));
     ctx(cfo(), now, 0);
     c.approve_payee(hash(payee));
 }
@@ -182,7 +182,7 @@ fn a_maker_cannot_approve_their_own_payee() {
     ctx(owner(), 1_000, 1);
     c.set_role(clerk(), Role::Checker, true);
     ctx(clerk(), 2_000, 0);
-    c.register_payee(hash('a'), hash('9'));
+    c.register_payee(hash('a'), hash('9'), Some(alice()));
     ctx(clerk(), 3_000, 0);
     c.approve_payee(hash('a'));
 }
@@ -344,7 +344,7 @@ fn changed_payment_details_lose_their_approval() {
 
     // The fraud: the supplier's details are quietly swapped.
     ctx(clerk(), 2_500, 0);
-    c.register_payee(hash('a'), hash('8'));
+    c.register_payee(hash('a'), hash('8'), Some(alice()));
     let payee = c.get_payee(hash('a')).unwrap();
     assert!(payee.approved_by.is_none());
     assert_eq!(payee.active_after.0, 0);
@@ -356,12 +356,77 @@ fn changed_payment_details_lose_their_approval() {
     assert_eq!(c.execute_run(id, 10), 0, "changed payee cannot be paid");
 }
 
+// The attack: submit the genuine file's hash, but with a line that pays someone
+// else. The file checks out, so the receiver has to be bound separately.
+#[test]
+fn a_line_cannot_pay_anyone_but_the_approved_receiver() {
+    let mut c = setup();
+    fund(&mut c, 100 * USDC, 1_500);
+    add_payee(&mut c, 'a', 2_000);
+    let mut stolen = line('1', 'a', 40 * USDC);
+    stolen.receiver = acc("attacker.testnet");
+    let id = submit(&mut c, 'm', vec![stolen]);
+    ctx(cfo(), 3_000, 0);
+    c.approve_run(id, hash('f'));
+    ctx(settler(), 4_000, 0);
+    assert_eq!(c.execute_run(id, 10), 0, "the money must not move");
+    assert_eq!(c.get_balances().available.0, 100 * USDC);
+    assert_eq!(c.get_run(id).unwrap().lines[0].status, LineStatus::Pending);
+}
+
+#[test]
+fn a_payee_with_no_bound_receiver_cannot_be_paid_directly() {
+    let mut c = setup();
+    fund(&mut c, 100 * USDC, 1_500);
+    ctx(clerk(), 2_000, 0);
+    c.register_payee(hash('a'), hash('9'), None);
+    ctx(cfo(), 2_000, 0);
+    c.approve_payee(hash('a'));
+    let id = submit(&mut c, 'm', vec![line('1', 'a', USDC)]);
+    ctx(cfo(), 3_000, 0);
+    c.approve_run(id, hash('f'));
+    ctx(settler(), 4_000, 0);
+    assert_eq!(c.execute_run(id, 10), 0);
+}
+
+#[test]
+fn changing_only_the_receiver_loses_the_approval() {
+    let mut c = setup();
+    add_payee(&mut c, 'a', 2_000);
+    ctx(clerk(), 2_500, 0);
+    c.register_payee(hash('a'), hash('9'), Some(acc("attacker.testnet")));
+    assert!(c.get_payee(hash('a')).unwrap().approved_by.is_none());
+}
+
+#[test]
+fn through_intents_each_payment_has_its_own_deposit_account() {
+    let mut c = setup_with(
+        Some(acc("intents.near")),
+        1,
+        10_000 * USDC,
+        50_000 * USDC,
+        0,
+    );
+    fund(&mut c, 100 * USDC, 1_500);
+    ctx(clerk(), 2_000, 0);
+    c.register_payee(hash('a'), hash('9'), None);
+    ctx(cfo(), 2_000, 0);
+    c.approve_payee(hash('a'));
+    let mut deposit = line('1', 'a', USDC);
+    deposit.receiver = acc("one-time-deposit.near");
+    let id = submit(&mut c, 'm', vec![deposit]);
+    ctx(cfo(), 3_000, 0);
+    c.approve_run(id, hash('f'));
+    ctx(settler(), 4_000, 0);
+    assert_eq!(c.execute_run(id, 10), 1);
+}
+
 #[test]
 fn registering_the_same_details_keeps_the_approval() {
     let mut c = setup();
     add_payee(&mut c, 'a', 2_000);
     ctx(clerk(), 2_500, 0);
-    c.register_payee(hash('a'), hash('9'));
+    c.register_payee(hash('a'), hash('9'), Some(alice()));
     assert!(c.get_payee(hash('a')).unwrap().approved_by.is_some());
 }
 
@@ -653,7 +718,7 @@ fn a_silent_refund_is_written_down() {
     fund(&mut c, 100 * USDC, 1_500);
     let token_says = serde_json::to_vec(&U128(103 * USDC)).unwrap();
     callback_ctx(5_000, PromiseResult::Successful(token_says));
-    c.on_reconcile();
+    c.on_reconcile(c.ledger_len());
     assert_eq!(c.get_balances().ledger.0, 103 * USDC);
     let entry = &c.get_ledger(1, 1)[0];
     assert_eq!(entry.kind, EntryKind::Credit);
@@ -662,12 +727,44 @@ fn a_silent_refund_is_written_down() {
 }
 
 #[test]
+fn a_stale_balance_read_writes_nothing() {
+    let mut c = setup();
+    fund(&mut c, 100 * USDC, 1_500);
+    let read_at = c.ledger_len();
+    // A credit lands between the token read and the callback.
+    fund(&mut c, 5 * USDC, 1_600);
+    let token_says = serde_json::to_vec(&U128(100 * USDC)).unwrap();
+    callback_ctx(5_000, PromiseResult::Successful(token_says));
+    c.on_reconcile(read_at);
+    assert_eq!(c.get_balances().ledger.0, 105 * USDC, "no false debit");
+    assert_eq!(c.ledger_len(), 2);
+}
+
+#[test]
+fn a_payment_starting_during_reconcile_writes_nothing() {
+    let mut c = setup();
+    fund(&mut c, 100 * USDC, 1_500);
+    add_payee(&mut c, 'a', 2_000);
+    let id = submit(&mut c, 'm', vec![line('1', 'a', 40 * USDC)]);
+    ctx(cfo(), 3_000, 0);
+    c.approve_run(id, hash('f'));
+    let read_at = c.ledger_len();
+    ctx(settler(), 4_000, 0);
+    c.execute_run(id, 10);
+    let token_says = serde_json::to_vec(&U128(60 * USDC)).unwrap();
+    callback_ctx(5_000, PromiseResult::Successful(token_says));
+    c.on_reconcile(read_at);
+    assert_eq!(c.get_balances().ledger.0, 100 * USDC);
+    assert_eq!(c.ledger_len(), 1, "the in-flight payment is not an unexplained debit");
+}
+
+#[test]
 fn a_balanced_ledger_writes_nothing() {
     let mut c = setup();
     fund(&mut c, 100 * USDC, 1_500);
     let token_says = serde_json::to_vec(&U128(100 * USDC)).unwrap();
     callback_ctx(5_000, PromiseResult::Successful(token_says));
-    c.on_reconcile();
+    c.on_reconcile(c.ledger_len());
     assert_eq!(c.ledger_len(), 1);
 }
 

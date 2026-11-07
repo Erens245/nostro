@@ -543,6 +543,33 @@ describe('the API, from file to statement', () => {
     assert.equal(response.status, 400);
   });
 
+  test('a line paying the wrong account is held, even in an approved run', async () => {
+    await addPayees();
+    const { runId, sha } = await submit();
+    const line = chain.runs[0]?.lines[1];
+    assert.ok(line);
+    line.receiver = 'attacker.testnet';
+    await relay({ method: 'approve_run', args: { run_id: runId, file_sha256: sha } });
+    const result = (await (await post(`/api/runs/${runId}/execute`, {})).json()) as {
+      sent: number[];
+      held: { line: number; reason: string }[];
+    };
+    assert.equal(result.sent.includes(1), false);
+    assert.ok(result.held.some((hold) => hold.line === 1 && hold.reason === 'receiver_mismatch'));
+    const status = await (await fetch(`${url}/api/runs/${runId}/pain002`)).text();
+    assert.match(status, /<Cd>AC01<\/Cd>/);
+  });
+
+  test('a run reports what is recorded, so a device can compare it with the file', async () => {
+    await addPayees();
+    const { runId } = await submit();
+    const body = (await (await fetch(`${url}/api/runs/${runId}`)).json()) as {
+      recordedLines: { amount: string }[];
+    };
+    assert.equal(body.recordedLines.length, 5);
+    assert.equal(body.recordedLines[1]?.amount, '2450750000');
+  });
+
   test('a held line reports why and stays pending', async () => {
     await addPayees();
     chain.balance = 1n * USDC;

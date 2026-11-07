@@ -55,6 +55,8 @@ These have unit tests or dry quotes only:
 - Refunds. On `EXACT_OUTPUT`, 1Click returns the slippage buffer by plain transfer, which the contract can't see. `reconcile()` records it as `UNALLOCATED_CREDIT`. The statement then shows a slightly high fee and a small later credit, and that's worth tidying.
 - Gas. The contract sends about 3 lines per call through Intents, and the server repeats calls until a run is done.
 
+**Build this before moving real amounts:** the contract can't bind a receiver through Intents, because each quote has a one-time deposit account. So the approver's page should fetch `GET /v0/status?depositAddress=` for each line and confirm that the quote's recipient is the payee's approved address, verifying the quote signature too. Until then a dishonest submitter could pair a genuine file with a deposit address for someone else, so keep limits tiny.
+
 Facts found while building:
 
 - `refundTo` must be an account that exists, or 1Click answers `Internal server error`.

@@ -143,6 +143,9 @@ pub struct Run {
 #[derive(Clone, Debug)]
 pub struct Payee {
     pub route_hash: String,
+    /// When paying directly, the only account this payee can be paid at, so a
+    /// run can't name an approved payee and send the money somewhere else.
+    pub receiver: Option<AccountId>,
     pub registered_by: AccountId,
     pub approved_by: Option<AccountId>,
     /// Nanoseconds. Zero until a checker approves.
@@ -213,7 +216,7 @@ trait FungibleToken {
 #[allow(dead_code)]
 trait SelfCallbacks {
     fn on_line_settled(&mut self, run_id: u64, index: u32, amount: U128, via_call: bool);
-    fn on_reconcile(&mut self);
+    fn on_reconcile(&mut self, ledger_len: u32);
 }
 
 #[near(contract_state)]
@@ -317,23 +320,27 @@ impl Nostro {
 
     /// Registers a payee, or changes the route of a known one. A change wipes
     /// the old approval, so new bank details never inherit trust.
-    pub fn register_payee(&mut self, payee_key: String, route_hash: String) {
+    pub fn register_payee(
+        &mut self,
+        payee_key: String,
+        route_hash: String,
+        receiver: Option<AccountId>,
+    ) {
         self.assert_role(Role::Maker);
         assert_hash(&payee_key, "E_BAD_PAYEE_KEY");
         assert_hash(&route_hash, "E_BAD_ROUTE_HASH");
-        let changed = self
-            .payees
-            .get(&payee_key)
-            .is_some_and(|p| p.route_hash != route_hash);
-        if let Some(existing) = self.payees.get(&payee_key)
-            && existing.route_hash == route_hash
-        {
+        let existing = self.payees.get(&payee_key);
+        let unchanged =
+            existing.is_some_and(|p| p.route_hash == route_hash && p.receiver == receiver);
+        if unchanged {
             return;
         }
+        let changed = existing.is_some();
         self.payees.insert(
             payee_key.clone(),
             Payee {
                 route_hash,
+                receiver,
                 registered_by: env::predecessor_account_id(),
                 approved_by: None,
                 active_after: U64(0),
@@ -532,6 +539,11 @@ impl Nostro {
                 None => Some("payee_unknown"),
                 Some(p) if p.approved_by.is_none() => Some("payee_unapproved"),
                 Some(p) if now < p.active_after.0 => Some("payee_cooloff"),
+                // Through Intents each payment has its own one-time deposit
+                // account, so there is no fixed receiver to compare with.
+                Some(p) if !via_call && p.receiver.as_ref() != Some(&line.receiver) => {
+                    Some("receiver_mismatch")
+                }
                 Some(_) if amount > self.per_payment_limit => Some("over_payment_limit"),
                 Some(_) if spent.saturating_add(amount) > self.daily_limit => {
                     Some("over_daily_limit")
@@ -636,18 +648,25 @@ impl Nostro {
             self.ledger_balance == self.available_balance,
             "E_PAYMENTS_IN_FLIGHT"
         );
+        let ledger_len = self.ledger.len();
         ext_ft::ext(self.token.clone())
             .with_static_gas(GAS_FT_BALANCE)
             .ft_balance_of(env::current_account_id())
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(GAS_ON_RECONCILE)
-                    .on_reconcile(),
+                    .on_reconcile(ledger_len),
             )
     }
 
+    /// The balance was read a moment ago. If the ledger has moved since, or a
+    /// payment has started, it may be stale, so nothing is written.
     #[private]
-    pub fn on_reconcile(&mut self) {
+    pub fn on_reconcile(&mut self, ledger_len: u32) {
+        if self.ledger.len() != ledger_len || self.ledger_balance != self.available_balance {
+            emit("reconcile_skipped", json!({ "reason": "ledger_moved" }));
+            return;
+        }
         let balance = match env::promise_result_checked(0, MAX_RESULT_BYTES) {
             Ok(bytes) => serde_json::from_slice::<U128>(&bytes)
                 .unwrap_or_else(|_| env::panic_str("E_BAD_BALANCE"))

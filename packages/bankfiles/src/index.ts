@@ -1,6 +1,8 @@
 export * from './types.ts';
 export { BASE_PER_CENT, baseToCents, centsToBase, formatCents, parseAmount, sha256Hex } from './money.ts';
 export { classifyAccount, hasErrors, isNearAccount } from './checks.ts';
+export { compareRunToFile, e2eHash, messageHash, payeeKey } from './hashes.ts';
+export type { CompareOptions, LineMismatch, RecordedLine } from './hashes.ts';
 export { detectFormat, readPaymentFile } from './read.ts';
 export type { ReadOptions } from './read.ts';
 export { readPain001 } from './pain001.ts';

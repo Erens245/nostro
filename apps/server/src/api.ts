@@ -371,6 +371,11 @@ export function createApi(deps: Deps) {
       rejectedReason: chainRun.rejected_reason,
       issues: detail?.run.issues ?? [],
       lines,
+      recordedLines: chainRun.lines.map(({ e2e_hash, payee_key, amount }) => ({
+        e2e_hash,
+        payee_key,
+        amount,
+      })),
     };
   }
 
@@ -515,9 +520,15 @@ export function createApi(deps: Deps) {
       route,
       ...(testnetReceiver ? { testnetReceiver } : {}),
     });
+    // On testnet money goes straight to this account, so the contract binds the
+    // payee to it. On mainnet each payment gets its own deposit account instead.
+    const receiver = config.network === 'testnet' ? (testnetReceiver ?? null) : null;
     return {
       key,
-      call: { method: 'register_payee', args: { payee_key: key, route_hash: routeHash(route) } },
+      call: {
+        method: 'register_payee',
+        args: { payee_key: key, route_hash: routeHash(route), receiver },
+      },
     };
   }
 

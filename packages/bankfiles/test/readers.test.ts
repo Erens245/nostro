@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
   classifyAccount,
+  compareRunToFile,
   detectFormat,
+  e2eHash,
   hasErrors,
   isNearAccount,
+  payeeKey,
   readCsv,
   readNacha,
   readPain001,
@@ -12,7 +15,7 @@ import {
   routingChecksumOk,
   sha256Hex,
 } from '../src/index.ts';
-import type { CanonicalRun } from '../src/index.ts';
+import type { CanonicalRun, RecordedLine } from '../src/index.ts';
 import { fixture, noSchema, schemaErrors } from './helpers.ts';
 
 const codes = (run: CanonicalRun): string[] => run.issues.map((entry) => entry.code);
@@ -271,6 +274,76 @@ describe('a messy CSV', () => {
 
   test('an empty list is an error', () => {
     assert.ok(codes(readCsv('name,account,amount\n')).includes('EMPTY_FILE'));
+  });
+});
+
+describe('comparing what is on chain with the file', () => {
+  const run = readPain001(fixture('pain.001.001.03.xml'));
+  const honest = (): RecordedLine[] =>
+    run.lines.map((line) => ({
+      e2e_hash: e2eHash(run, line),
+      payee_key: payeeKey(line.creditorAccount),
+      amount: (line.amountMinor * 10_000n).toString(),
+    }));
+  const tampered = (change: (lines: RecordedLine[]) => void): RecordedLine[] => {
+    const lines = honest();
+    change(lines);
+    return lines;
+  };
+
+  test('an honest run has no differences', () => {
+    assert.deepEqual(compareRunToFile(run, honest()), []);
+  });
+
+  test('catches an inflated amount', () => {
+    const lines = tampered((all) => {
+      (all[1] as RecordedLine).amount = '9999000000';
+    });
+    const found = compareRunToFile(run, lines);
+    assert.equal(found.length, 1);
+    assert.equal(found[0]?.line, 1);
+    assert.match(found[0]?.message ?? '', /Lucia Marin.*amount/);
+  });
+
+  test('catches a reduced amount', () => {
+    const lines = tampered((all) => {
+      (all[0] as RecordedLine).amount = '1';
+    });
+    assert.equal(compareRunToFile(run, lines).length, 1);
+  });
+
+  test('catches a line pointed at a different approved payee', () => {
+    const lines = tampered((all) => {
+      (all[0] as RecordedLine).payee_key = (all[1] as RecordedLine).payee_key;
+    });
+    assert.match(compareRunToFile(run, lines)[0]?.message ?? '', /different payee/);
+  });
+
+  test('catches a changed payment id', () => {
+    const lines = tampered((all) => {
+      (all[2] as RecordedLine).e2e_hash = '0'.repeat(64);
+    });
+    assert.match(compareRunToFile(run, lines)[0]?.message ?? '', /payment id/);
+  });
+
+  test('catches an extra payment smuggled in', () => {
+    const lines = honest();
+    lines.push({ e2e_hash: 'a', payee_key: 'b', amount: '1' });
+    assert.equal(compareRunToFile(run, lines)[0]?.line, null);
+  });
+
+  test('catches a dropped payment', () => {
+    assert.ok(compareRunToFile(run, honest().slice(0, 4)).length > 0);
+  });
+
+  test('allows a routing cost only up to the stated limit', () => {
+    const withFee = tampered((all) => {
+      const first = all[0] as RecordedLine;
+      first.amount = ((BigInt(first.amount) * 10_050n) / 10_000n).toString();
+    });
+    assert.equal(compareRunToFile(run, withFee).length, 1, 'no fee is allowed by default');
+    assert.equal(compareRunToFile(run, withFee, { maxFeeBps: 100 }).length, 0);
+    assert.equal(compareRunToFile(run, withFee, { maxFeeBps: 10 }).length, 1);
   });
 });
 

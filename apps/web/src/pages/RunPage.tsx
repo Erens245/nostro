@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { formatCents, readPaymentFile, sha256Hex } from '@nostro/bankfiles';
-import type { CanonicalRun } from '@nostro/bankfiles';
+import { compareRunToFile, formatCents, readPaymentFile, sha256Hex } from '@nostro/bankfiles';
+import type { CanonicalRun, LineMismatch, RecordedLine } from '@nostro/bankfiles';
 import { usePortal } from '../App.tsx';
 import { postJson, request } from '../api.ts';
 import type { RunDetail } from '../api.ts';
@@ -21,14 +21,24 @@ import {
 
 interface DeviceCheck {
   matches: boolean;
+  fileMatches: boolean;
+  mismatches: LineMismatch[];
   computed: string;
   chainHash: string;
   fromChain: boolean;
   run: CanonicalRun;
 }
 
-/** The hash recorded on chain, read directly rather than through our server. */
-async function chainFileHash(rpcUrl: string, contractId: string, id: number): Promise<string | null> {
+interface RecordedRun {
+  file_sha256: string;
+  lines: RecordedLine[];
+}
+
+/** Routing cost the approver will accept on a line, on mainnet. */
+const MAX_FEE_BPS = 100;
+
+/** The run as recorded on chain, read directly rather than through our server. */
+async function recordedRun(rpcUrl: string, contractId: string, id: number): Promise<RecordedRun | null> {
   if (!rpcUrl) return null;
   try {
     const args = btoa(JSON.stringify({ run_id: id }));
@@ -50,19 +60,17 @@ async function chainFileHash(rpcUrl: string, contractId: string, id: number): Pr
     });
     const body = (await response.json()) as { result?: { result?: number[] } };
     if (!body.result?.result) return null;
-    const run = JSON.parse(new TextDecoder().decode(Uint8Array.from(body.result.result))) as {
-      file_sha256?: string;
-    } | null;
-    return run?.file_sha256 ?? null;
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(body.result.result))) as RecordedRun | null;
   } catch {
     return null;
   }
 }
 
 /**
- * Re-reads the original file on the approver's own device. What is shown comes
- * from the bytes whose hash the approval signs, so a tampered server can't show
- * one set of payees while the approval covers another.
+ * Re-reads the original file on the approver's own device, then compares it with
+ * what is recorded on chain, line by line. A matching file hash alone would not
+ * be enough: money follows the recorded lines, which arrive separately from the
+ * file, so a dishonest submitter could pair a genuine file with altered lines.
  */
 function useDeviceCheck(detail: RunDetail | null) {
   const { config } = usePortal();
@@ -78,11 +86,24 @@ function useDeviceCheck(detail: RunDetail | null) {
         if (!response.ok) throw new Error('This server does not hold the original file.');
         const bytes = new Uint8Array(await response.arrayBuffer());
         const computed = sha256Hex(bytes);
-        const direct = await chainFileHash(config.rpcUrl, config.contractId, detail.id);
-        const chainHash = direct ?? detail.fileSha256;
+        const direct = await recordedRun(config.rpcUrl, config.contractId, detail.id);
+        const chainHash = direct?.file_sha256 ?? detail.fileSha256;
         const run = readPaymentFile(bytes, { company: config.company });
+        const fileMatches = computed === chainHash;
+        const recorded = direct?.lines ?? detail.recordedLines;
+        const mismatches = compareRunToFile(run, recorded, {
+          maxFeeBps: config.network === 'mainnet' ? MAX_FEE_BPS : 0,
+        });
         if (!stale) {
-          setCheck({ matches: computed === chainHash, computed, chainHash, fromChain: direct !== null, run });
+          setCheck({
+            matches: fileMatches && mismatches.length === 0,
+            fileMatches,
+            mismatches,
+            computed,
+            chainHash,
+            fromChain: direct !== null,
+            run,
+          });
         }
       } catch (error) {
         if (!stale) setProblem(error instanceof Error ? error.message : 'The check failed.');
@@ -220,12 +241,23 @@ export function RunPage({ id }: { id: number }) {
       {check ? (
         check.matches ? (
           <Notice tone="good" title="Checked on this device">
-            This browser read the original file and its hash matches the one recorded{' '}
-            {check.fromChain ? 'on chain' : 'for this run'}. The payees below come from that file.
+            This browser read the original file. Its hash and all {check.run.lines.length} payments match what’s
+            recorded {check.fromChain ? 'on chain' : 'for this run'}, and the payees below come from that file.
           </Notice>
         ) : (
           <Notice tone="bad" title="Do not approve this run">
-            The file on this server does not match the one recorded on chain.
+            {check.fileMatches ? (
+              <>
+                The file is genuine, but what’s recorded to be paid is different from it.
+                <ul>
+                  {check.mismatches.map((mismatch, index) => (
+                    <li key={index}>{mismatch.message}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              'The file on this server does not match the one recorded on chain.'
+            )}
           </Notice>
         )
       ) : problem ? (

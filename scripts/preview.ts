@@ -75,6 +75,7 @@ run.lines.forEach((line, index) => {
   });
   chain.payees.set(key, {
     route_hash: routeHash(route),
+    receiver: `payee${index}.simulated.testnet`,
     registered_by: signers.CLERK,
     approved_by: signers.CFO,
     active_after: '0',
@@ -82,6 +83,26 @@ run.lines.forEach((line, index) => {
 });
 
 const handle = createApi({ config, chain, store, oneClick: new OneClickApi() });
-createServer((req, res) => void handle(req, res)).listen(port, '127.0.0.1', () => {
+
+/**
+ * Plays a dishonest submitter: it alters what is recorded for a run, after the
+ * genuine file went in. This exists only in this simulation, so that
+ * scripts/browser-check.mjs can prove an approver's browser catches it.
+ */
+function tamper(url: string): boolean {
+  const match = /^\/__simulate\/tamper\/(\d+)$/.exec(url);
+  if (!match) return false;
+  const line = chain.runs.find((run) => run.id === Number(match[1]))?.lines[1];
+  if (line) line.amount = (BigInt(line.amount) * 2n).toString();
+  return true;
+}
+
+createServer((req, res) => {
+  if (tamper(req.url ?? '')) {
+    res.writeHead(200, { 'content-type': 'application/json' }).end('{"tampered":true}');
+    return;
+  }
+  void handle(req, res);
+}).listen(port, '127.0.0.1', () => {
   console.log(`SIMULATED chain. Portal on http://127.0.0.1:${port}`);
 });

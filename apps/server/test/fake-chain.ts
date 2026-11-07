@@ -152,6 +152,7 @@ export class FakeChain implements Chain {
       case 'register_payee': {
         this.payees.set(args['payee_key'] as string, {
           route_hash: args['route_hash'] as string,
+          receiver: (args['receiver'] as string | null) ?? null,
           registered_by: caller,
           approved_by: null,
           active_after: '0',
@@ -196,6 +197,10 @@ export class FakeChain implements Chain {
       const payee = this.payees.get(line.payee_key);
       if (!payee?.approved_by) {
         events.push({ event: 'line_held', data: { line: index, reason: 'payee_unapproved' } });
+        continue;
+      }
+      if (payee.receiver !== line.receiver) {
+        events.push({ event: 'line_held', data: { line: index, reason: 'receiver_mismatch' } });
         continue;
       }
       const amount = BigInt(line.amount);
