@@ -11,7 +11,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { freshPaymentFile, launchChrome, portalConfig, sleep } from './chrome.mjs';
 
@@ -154,6 +154,20 @@ ${gnucashPasses} checks on amounts and balances, in GnuCash's importers.</pre>`)
   },
 ];
 
+const CHAPTERS = [
+  'The idea',
+  'The file you already have',
+  'A clerk uploads it',
+  'What it costs',
+  'Submitted, with no gas',
+  'A second person checks it',
+  'Approve and pay',
+  'A repeat is refused',
+  'The statement',
+  'Real accounting software',
+  'In one line',
+];
+
 // ---------- Narration ----------
 
 function speak() {
@@ -212,6 +226,15 @@ await page.call('Emulation.setDeviceMetricsOverride', {
 await page.call('Page.addScriptToEvaluateOnNewDocument', {
   source: `window.__clickPause = 500;
   window.__caption = (text) => {
+    const label = ${JSON.stringify(simulated ? 'Rehearsal: simulated chain' : '')};
+    if (label && !document.getElementById('nostro-badge')) {
+      const badge = document.createElement('div');
+      badge.id = 'nostro-badge';
+      badge.textContent = label;
+      badge.style.cssText = 'position:fixed;top:12px;right:14px;z-index:99999;padding:5px 11px;' +
+        'background:#8a5a0a;color:#fff;font:600 15px "Segoe UI",sans-serif;border-radius:3px;';
+      document.documentElement.appendChild(badge);
+    }
     let bar = document.getElementById('nostro-caption');
     if (!bar) {
       bar = document.createElement('div');
@@ -277,6 +300,95 @@ await sleep(300);
 const errors = [...page.pageErrors];
 page.close();
 if (errors.length > 0) console.warn(`Page errors during recording:\n${errors.slice(0, 3).join('\n')}`);
+
+// ---------- A page to watch it on ----------
+
+/** Writes index.html beside the video, with chapters and a way to try it. */
+function writeViewingPage() {
+  const clock = (value) => `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
+  const chapters = offsets
+    .map(
+      (at, index) =>
+        `<li><button type="button" data-at="${at.toFixed(2)}"><span>${clock(at)}</span>${CHAPTERS[index]}</button></li>`,
+    )
+    .join('\n');
+  const sample = resolve(here, '..', 'fixtures', 'pain.001.001.03.xml');
+  const note = simulated
+    ? `<p class="note"><strong>This is a rehearsal on a simulated chain.</strong> The portal, file reading, browser
+       signing and all the checks are real, and the routing costs are live quotes. No blockchain is involved yet, so
+       “settled” here is simulated. The real testnet run is scheduled for 06:01 IST.</p>`
+    : `<p class="note">Recorded on NEAR testnet, contract <code>${config.contractId}</code>. Test tokens have no value.</p>`;
+  const tryIt = simulated
+    ? `<section>
+        <h2>Try it yourself</h2>
+        <p><a class="button" href="${base}/" target="_blank" rel="noopener">Open the portal</a></p>
+        <ol>
+          <li>Click <strong>Finance clerk</strong>.</li>
+          <li>Click <strong>New payment run</strong> and choose this file:<br><code>${sample}</code></li>
+          <li>Look at the cost comparison, then click <strong>Submit for approval</strong>.</li>
+          <li>Click <strong>Sign out</strong>, then <strong>Finance director</strong>.</li>
+          <li>Click <strong>Approvals</strong>, then <strong>Run 1</strong>. See <strong>Checked on this device</strong>.</li>
+          <li>Click <strong>Approve</strong>, then <strong>Release payments</strong>.</li>
+          <li>Click <strong>Statements</strong> and download one. Then try uploading the same file again.</li>
+        </ol>
+      </section>`
+    : '';
+  const page = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nostro walkthrough</title>
+<style>
+  :root { --paper:#f6f3ec; --sheet:#fffdf8; --ink:#1c2b3a; --muted:#5e6670; --rule:#dcd6c8; --warn:#8a5a0a; --warn-wash:#f7ecd5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 16px 64px; background: var(--paper); color: var(--ink);
+    font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.5; }
+  main { max-width: 960px; margin: 0 auto; }
+  h1, h2 { font-family: 'Palatino Linotype', Palatino, Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+  h1 { margin: 0 0 4px; font-size: 2.1rem; }
+  h2 { margin: 32px 0 8px; font-size: 1.3rem; }
+  .lead { margin: 0 0 16px; color: var(--muted); }
+  .note { margin: 0 0 16px; padding: 10px 14px; border-left: 3px solid var(--warn); background: var(--warn-wash); }
+  video { display: block; width: 100%; background: #000; border-radius: 3px; }
+  .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; }
+  .chapters button { display: flex; gap: 10px; width: 100%; padding: 8px 12px; border: 1px solid var(--rule); border-radius: 3px;
+    background: var(--sheet); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  .chapters button:hover { border-color: var(--ink); }
+  .chapters span { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .button { display: inline-block; padding: 10px 16px; border-radius: 3px; background: var(--ink); color: var(--paper); font-weight: 600; text-decoration: none; }
+  ol { padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1>How Nostro works</h1>
+  <p class="lead">Press play, with sound on. About ${Math.round(clock_seconds())} seconds.</p>
+  ${note}
+  <video id="demo" controls preload="auto" src="${basename(output)}"></video>
+  <ul class="chapters">
+${chapters}
+  </ul>
+  ${tryIt}
+</main>
+<script>
+  const video = document.getElementById('demo');
+  for (const button of document.querySelectorAll('[data-at]')) {
+    button.addEventListener('click', () => {
+      video.currentTime = Number(button.dataset.at);
+      video.play();
+    });
+  }
+</script>
+</body>
+</html>
+`;
+  writeFileSync(join(dirname(output), 'index.html'), page);
+}
+
+const clock_seconds = () => clips.reduce((sum, clip) => sum + clip.seconds, 0);
 
 // ---------- Editing ----------
 
@@ -356,6 +468,8 @@ if (made.status !== 0) {
   console.error(made.stderr.slice(-1500));
   process.exit(1);
 }
+
+writeViewingPage();
 
 const length = seconds(output);
 console.log(`\nWrote ${output}`);
