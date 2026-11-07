@@ -22,6 +22,12 @@ const config = await portalConfig(base);
 const simulated = config.contractId.includes('simulated');
 console.log(`Checking ${base}, contract ${config.contractId}${simulated ? ' (simulated chain)' : ''}\n`);
 
+// The walk expects run 1 and a $20,000 balance, and the preview keeps runs in memory.
+if (simulated && (await (await fetch(`${base}/api/runs`)).json()).length > 0) {
+  console.log('This preview has already been used. Stop it, start `npm run preview` again, and rerun this check.');
+  process.exit(1);
+}
+
 const page = await launchChrome();
 let failed = 0;
 
