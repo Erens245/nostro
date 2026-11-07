@@ -1,0 +1,30 @@
+{
+  "name": "@nostro/bankfiles",
+  "version": "0.1.0",
+  "description": "Read payment files and write status reports and bank statements. Pure TypeScript, no chain code.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "pretest": "node ../../schemas/fetch.mjs",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "saxes": "6.0.0"
+  },
+  "devDependencies": {
+    "@financica/camt053": "0.4.0",
+    "@types/node": "26.6.6",
+    "mt940js": "1.3.5",
+    "nach2": "0.5.1",
+    "node-ofx-parser": "0.5.1",
+    "ofx-js": "1.1.2",
+    "sepa": "3.1.0",
+    "typescript": "5.9.3",
+    "xmllint-wasm": "5.3.0"
+  }
+}

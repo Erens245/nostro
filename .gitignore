@@ -11,3 +11,4 @@ target/
 .agents/
 .claude/
 skills-lock.json
+schemas/cache/
