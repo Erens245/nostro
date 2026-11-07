@@ -62,6 +62,13 @@ testRun(
   join(root, 'apps', 'server'),
 );
 
+testRun(
+  'Approver checks: a real 1Click signature verifies, and every tampered quote is caught',
+  process.execPath,
+  ['--test', '--test-reporter=tap', 'test/**/*.test.ts'],
+  join(root, 'apps', 'web'),
+);
+
 // ---------- The deployed contract, read from the chain ----------
 
 const deploymentPath = join(root, 'deployment.json');

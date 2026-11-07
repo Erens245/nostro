@@ -7,7 +7,7 @@ import {
   formatCents,
   messageHash,
   payeeKey,
-  sha256Hex,
+  routeHash,
 } from '@nostro/bankfiles';
 import type {
   CanonicalLine,
@@ -92,10 +92,7 @@ export interface Payee {
   testnetReceiver?: string;
 }
 
-export const routeHash = (route: Route): string =>
-  sha256Hex(`${route.chain}|${route.asset}|${route.address}`);
-
-export { e2eHash, messageHash, payeeKey };
+export { e2eHash, messageHash, payeeKey, routeHash };
 
 // ---------- Submitting a run ----------
 

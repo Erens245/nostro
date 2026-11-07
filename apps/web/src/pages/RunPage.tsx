@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
-import { compareRunToFile, formatCents, readPaymentFile, sha256Hex } from '@nostro/bankfiles';
+import {
+  compareRunToFile,
+  formatCents,
+  payeeKey,
+  readPaymentFile,
+  sha256Hex,
+} from '@nostro/bankfiles';
 import type { CanonicalRun, LineMismatch, RecordedLine } from '@nostro/bankfiles';
 import { usePortal } from '../App.tsx';
 import { postJson, request } from '../api.ts';
 import type { RunDetail } from '../api.ts';
+import { verifyRoutedLines } from '../quote-check.ts';
+import type { SignedQuote, Token } from '../quote-check.ts';
 import { send } from '../sign.ts';
 import {
   FORMAT_NAMES,
@@ -31,39 +39,46 @@ interface DeviceCheck {
 
 interface RecordedRun {
   file_sha256: string;
-  lines: RecordedLine[];
+  lines: (RecordedLine & { receiver: string })[];
 }
 
 /** Routing cost the approver will accept on a line, on mainnet. */
 const MAX_FEE_BPS = 100;
 
-/** The run as recorded on chain, read directly rather than through our server. */
-async function recordedRun(rpcUrl: string, contractId: string, id: number): Promise<RecordedRun | null> {
-  if (!rpcUrl) return null;
-  try {
-    const args = btoa(JSON.stringify({ run_id: id }));
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'nostro',
-        method: 'query',
-        params: {
-          request_type: 'call_function',
-          finality: 'final',
-          account_id: contractId,
-          method_name: 'get_run',
-          args_base64: args,
-        },
-      }),
-    });
-    const body = (await response.json()) as { result?: { result?: number[] } };
-    if (!body.result?.result) return null;
-    return JSON.parse(new TextDecoder().decode(Uint8Array.from(body.result.result))) as RecordedRun | null;
-  } catch {
-    return null;
-  }
+const ONE_CLICK = 'https://1click.chaindefuser.com/v0';
+
+/** Reads the contract directly, so the answer doesn't pass through our server. */
+async function chainView<T>(
+  rpcUrl: string,
+  contractId: string,
+  method: string,
+  args: Record<string, unknown>,
+): Promise<T | null> {
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 'nostro',
+      method: 'query',
+      params: {
+        request_type: 'call_function',
+        finality: 'final',
+        account_id: contractId,
+        method_name: method,
+        args_base64: btoa(JSON.stringify(args)),
+      },
+    }),
+  });
+  const body = (await response.json()) as { result?: { result?: number[] } };
+  if (!body.result?.result) throw new Error('This device could not read the chain directly.');
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(body.result.result))) as T | null;
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+  return (await response.json()) as T;
 }
 
 /**
@@ -86,14 +101,52 @@ function useDeviceCheck(detail: RunDetail | null) {
         if (!response.ok) throw new Error('This server does not hold the original file.');
         const bytes = new Uint8Array(await response.arrayBuffer());
         const computed = sha256Hex(bytes);
-        const direct = await recordedRun(config.rpcUrl, config.contractId, detail.id);
+        // Only the simulated preview has no chain to read. Anywhere else, a
+        // failed read throws, because trusting the server's copy instead would
+        // defeat the point. With no check result, Approve stays disabled.
+        const direct = config.rpcUrl
+          ? await chainView<RecordedRun>(config.rpcUrl, config.contractId, 'get_run', { run_id: detail.id })
+          : null;
+        if (config.rpcUrl && !direct) throw new Error('This run is not on chain.');
         const chainHash = direct?.file_sha256 ?? detail.fileSha256;
         const run = readPaymentFile(bytes, { company: config.company });
         const fileMatches = computed === chainHash;
         const recorded = direct?.lines ?? detail.recordedLines;
-        const mismatches = compareRunToFile(run, recorded, {
-          maxFeeBps: config.network === 'mainnet' ? MAX_FEE_BPS : 0,
-        });
+        const mainnet = config.network === 'mainnet';
+        const mismatches = compareRunToFile(run, recorded, { maxFeeBps: mainnet ? MAX_FEE_BPS : 0 });
+        if (mainnet) {
+          mismatches.push(
+            ...(await verifyRoutedLines(
+              run.lines.map((line) => ({
+                index: line.index,
+                name: line.creditorName,
+                payeeKey: payeeKey(line.creditorAccount),
+                depositAddress: recorded[line.index]?.receiver ?? '',
+                route: detail.lines[line.index]?.route ?? null,
+                principalBase: line.amountMinor * 10_000n,
+              })),
+              {
+                contractId: config.contractId,
+                approvedRouteHash: async (key) => {
+                  const payee = await chainView<{ route_hash: string; approved_by: string | null }>(
+                    config.rpcUrl,
+                    config.contractId,
+                    'get_payee',
+                    { payee_key: key },
+                  );
+                  return payee?.approved_by ? payee.route_hash : null;
+                },
+                status: async (address) =>
+                  (
+                    await getJson<{ quoteResponse: SignedQuote }>(
+                      `${ONE_CLICK}/status?depositAddress=${encodeURIComponent(address)}`,
+                    )
+                  ).quoteResponse,
+                tokens: () => getJson<Token[]>(`${ONE_CLICK}/tokens`),
+              },
+            )),
+          );
+        }
         if (!stale) {
           setCheck({
             matches: fileMatches && mismatches.length === 0,

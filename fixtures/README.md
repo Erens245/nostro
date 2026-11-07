@@ -8,6 +8,7 @@ These are the inputs our readers are tested on. Tests that only read back our ow
 | `pain.001.001.09.xml` | [`sepa`](https://www.npmjs.com/package/sepa) | Same payments in the newer version |
 | `payroll.ach` | [`nach2`](https://www.npmjs.com/package/nach2) | NACHA PPD payroll batch, 5 employees |
 | `messy-export.csv` | Written by hand | CSV has no standard, so this imitates an awkward spreadsheet export |
+| `1click-status-sample.json` | The live 1Click API | A real signed reply to a firm quote that was never funded, paying a random address. Used to test signature checking |
 
 `node fixtures/generate.mjs` rebuilds them. That script imports only the third-party libraries, never this repo's code.
 

@@ -8,16 +8,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@noble/curves": "2.2.0",
     "@noble/hashes": "2.2.0",
     "@nostro/bankfiles": "*",
+    "@scure/base": "2.2.0",
     "near-api-js": "7.4.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.2.1",

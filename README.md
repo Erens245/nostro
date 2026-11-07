@@ -141,7 +141,7 @@ node --env-file=.keys/testnet.env scripts/demo-testnet.ts
 - USD only. Statements show USDC as USD at 1:1, and say so.
 - Public-chain payouts can be observed. The `confidentiality` quote option returned 401 without user authentication when tested, so private payouts aren't claimed. Use the NEAR Business export for sensitive runs.
 - The approver's check runs in code the portal serves, so a fully compromised server could serve a tampered page. A real deployment needs the portal hosted separately from the service holding the relayer and settler keys.
-- Through NEAR Intents each payment has a one-time deposit account, so the contract can't bind a receiver the way it does for direct payments. The destination is inside the 1Click quote. Checking that on the approver's device is planned, and not yet built.
+- Through NEAR Intents each payment has a one-time deposit account, so the contract can't bind a receiver the way it does for direct payments. The destination is inside the 1Click quote, so on mainnet the approver's browser checks that instead: the quote must be signed by 1Click and pay the approved route, with refunds back to this account. It's tested against a real signed quote, and hasn't yet guarded a real payment.
 - Payee details are stored by the server as plain JSON. That's fine for a demo and not for production.
 - Demo sign-in hands out throwaway testnet keys, and only when `NOSTRO_DEMO_KEYS=yes` on testnet.
 

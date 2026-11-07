@@ -22,6 +22,9 @@ export const messageHash = (run: CanonicalRun): string =>
 export const e2eHash = (run: CanonicalRun, line: CanonicalLine): string =>
   sha256Hex(`${party(run)}|${line.endToEndId}`);
 
+export const routeHash = (route: { chain: string; asset: string; address: string }): string =>
+  sha256Hex(`${route.chain}|${route.asset}|${route.address}`);
+
 /** What the contract holds for a line. */
 export interface RecordedLine {
   e2e_hash: string;

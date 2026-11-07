@@ -371,10 +371,11 @@ export function createApi(deps: Deps) {
       rejectedReason: chainRun.rejected_reason,
       issues: detail?.run.issues ?? [],
       lines,
-      recordedLines: chainRun.lines.map(({ e2e_hash, payee_key, amount }) => ({
+      recordedLines: chainRun.lines.map(({ e2e_hash, payee_key, amount, receiver }) => ({
         e2e_hash,
         payee_key,
         amount,
+        receiver,
       })),
     };
   }
