@@ -221,20 +221,14 @@ if (clerkApproves.status === 200) throw new Error('A clerk approved a run.');
 refused('A clerk approving, through the relayer', String(clerkApproves.body.error), 'relayer');
 
 // The relayer's check is a courtesy. Going around it must fail too.
-const relayer = new Account(
-  env('NOSTRO_RELAYER_ID'),
-  provider,
-  env('NOSTRO_RELAYER_KEY') as `ed25519:${string}`,
-);
 const direct = await sign(clerk, 'approve_run', { run_id: first.runId, file_sha256: first.sha });
-try {
-  await relayer.relayMetaTransaction(decodeDelegate(direct) as never);
-  throw new Error('NOT REFUSED');
-} catch (error) {
-  const text = error instanceof Error ? error.message : String(error);
-  if (text === 'NOT REFUSED') throw new Error('The chain let a clerk key call approve_run.');
-  refused('A clerk approving, going around the relayer', text.slice(0, 120), 'NEAR protocol, the key cannot call that method');
-}
+const around = await chain.relay(decodeDelegate(direct));
+if (!around.failure) throw new Error('The chain let a clerk key call approve_run.');
+refused(
+  'A clerk approving, going around the relayer',
+  around.failure.slice(0, 120),
+  'NEAR protocol, the key cannot call that method',
+);
 
 // ---------- Approve and pay ----------
 
@@ -319,6 +313,7 @@ await download(`/api/runs/${first.runId}/pain002`, 'status-report.pain002.xml');
 const query = `from=${today}&to=${today}`;
 await download(`/api/statements/download?${query}&format=camt053`, 'statement.camt053.xml');
 await download(`/api/statements/download?${query}&format=ofx`, 'statement.ofx');
+await download(`/api/statements/download?${query}&format=ofx220`, 'statement-220.ofx');
 await download(`/api/statements/download?${query}&format=mt940`, 'statement.sta');
 await download(`/api/statements/download?${query}&format=csv`, 'statement.csv');
 log('Status report and statements written', 'see proof/');

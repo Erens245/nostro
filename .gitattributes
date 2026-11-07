@@ -1,0 +1,3 @@
+# Evidence and sample files are hashed, so git must never change their bytes.
+proof/** -text
+fixtures/** -text

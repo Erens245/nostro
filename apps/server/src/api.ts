@@ -467,6 +467,8 @@ export function createApi(deps: Deps) {
         return sendFile(res, `${name}.xml`, 'application/xml', writeCamt053(input));
       case 'ofx':
         return sendFile(res, `${name}.ofx`, 'application/x-ofx', writeOfx(input));
+      case 'ofx220':
+        return sendFile(res, `${name}.ofx`, 'application/x-ofx', writeOfx(input, { version: '2.2.0' }));
       case 'mt940':
         return sendFile(res, `${name}.sta`, 'text/plain', writeMt940(input));
       case 'csv':
