@@ -1,0 +1,94 @@
+{
+  "voice": "Zira",
+  "rate": 1.1,
+  "scenes": [
+    {
+      "id": "wires",
+      "lines": [
+        { "id": "a1", "say": "Every month, businesses pay people in other countries: freelancers and suppliers." },
+        { "id": "a2", "say": "Usually, each payment goes by bank wire.", "after": 0.6 },
+        {
+          "id": "a3",
+          "say": "A wire often costs about forty-five dollars in fees, and can take three to five days to arrive.",
+          "caption": "A wire often costs about $45 in fees, and can take 3 to 5 days to arrive."
+        },
+        {
+          "id": "a4",
+          "say": "For these five payments, that's about two hundred and twenty-five dollars, just in fees.",
+          "caption": "For these five payments, that’s about $225, just in fees."
+        }
+      ]
+    },
+    {
+      "id": "hard",
+      "lines": [
+        { "id": "b1", "say": "Digital dollars, called stablecoins, can make the same payments in minutes, for a fraction of the cost." },
+        { "id": "b2", "say": "But using them means a crypto wallet, a special token to pay fees, and a whole new way of working." },
+        { "id": "b3", "say": "Then someone retypes every payment into the books, by hand." },
+        { "id": "b4", "say": "So most teams don't bother.", "caption": "So most teams don’t bother.", "after": 0.6 },
+        { "id": "c1", "say": "Nostro fixes that. And the team keeps working the way it does today.", "after": 0.6 }
+      ]
+    },
+    {
+      "id": "file",
+      "lines": [
+        { "id": "d1", "say": "Their accounting software already makes a payment file for the bank." },
+        { "id": "d2", "say": "They give Nostro that same file. Nothing about it changes.", "after": 0.5 }
+      ]
+    },
+    {
+      "id": "approve",
+      "lines": [
+        { "id": "e1", "say": "One person sends the payments, and a second person must approve them." },
+        { "id": "e2", "say": "Nostro refuses to pay the same bill twice." },
+        {
+          "id": "e3",
+          "say": "And if someone's payment details suddenly change, a common scam, their payment waits to be checked again.",
+          "caption": "And if someone’s payment details suddenly change, a common scam, their payment waits to be checked again."
+        }
+      ]
+    },
+    {
+      "id": "pay",
+      "lines": [
+        {
+          "id": "f1",
+          "say": "Then, using Near, Nostro pays everyone in digital dollars.",
+          "caption": "Then, using NEAR, Nostro pays everyone in digital dollars.",
+          "after": 1.6
+        },
+        { "id": "f2", "say": "Each person gets the full amount. The small fee is shown separately." },
+        { "id": "f3", "say": "No one on the team needs a crypto wallet, or a token for fees." }
+      ]
+    },
+    {
+      "id": "books",
+      "lines": [
+        { "id": "g1", "say": "Finally, Nostro sends back a statement, just like a bank does." },
+        { "id": "g2", "say": "The accounting software imports it, and the books are up to date. No retyping." }
+      ]
+    },
+    {
+      "id": "record",
+      "lines": [
+        {
+          "id": "h1",
+          "say": "Every step is recorded on Near, so the company, or its auditor, can check every payment.",
+          "caption": "Every step is recorded on NEAR, so the company, or its auditor, can check every payment.",
+          "after": 0.8
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "hold": 2.6,
+      "lines": [
+        { "id": "i1", "say": "Nostro.", "after": 0.25 },
+        { "id": "i2", "say": "Payment file in.", "after": 0.2 },
+        { "id": "i3", "say": "Digital dollars out.", "after": 0.2 },
+        { "id": "i4", "say": "Statement back.", "after": 0.5 },
+        { "id": "i5", "say": "Built at Near Hackathon.", "caption": "Built at NEAR HACKATHON." }
+      ]
+    }
+  ]
+}

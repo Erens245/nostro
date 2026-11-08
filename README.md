@@ -125,7 +125,7 @@ The approver's browser adds one more check that the contract can't do, because i
 | `apps/web/` | The portal |
 | `fixtures/` | Sample payment files |
 | `schemas/` | Script that fetches the ISO schemas, pinned by hash. The schemas aren't redistributed here |
-| `scripts/` | Deploy, demo, verify and browser check |
+| `scripts/` | Deploy, demo, verify, browser check, and the plain-language explainer video (`record-explainer.mjs`) |
 | `docs/` | Design notes, spec and mainnet runbook |
 
 ## Deployment
@@ -163,7 +163,7 @@ node --env-file=.keys/testnet.env scripts/demo-testnet.ts
 
 **Tests only:** sepa and nach2 (making fixtures), ofx-js, node-ofx-parser, mt940js, @financica/camt053 (reading our output), xmllint-wasm (schema validation), GnuCash's LibOFX and AqBanking (reading our statements), headless Chrome (browser check).
 
-**Demo video:** headless Chrome, ffmpeg and Windows speech synthesis.
+**Demo and explainer videos:** headless Chrome, ffmpeg and Windows speech synthesis.
 
 **AI tools:** written with Claude Code, with NEAR's agent skills (`near/agent-skills`) installed for reference.
 

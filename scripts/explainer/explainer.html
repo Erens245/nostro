@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nostro explainer</title>
+<!--
+  The scenes of the explainer video. record-explainer.mjs opens this page in headless Chrome,
+  hands it the narration timing as window.TIMING, then calls window.seek(seconds) once per
+  frame. Every movement is worked out from that time alone, so each run draws the same frames.
+-->
+<style>
+  :root {
+    --paper: #f6f3ec; --sheet: #fffdf8; --ink: #1c2b3a; --muted: #5e6670; --rule: #dcd6c8;
+    --good: #1f5f4a; --good-wash: #e3efe8; --warn: #8a5a0a; --warn-wash: #f7ecd5;
+    --bad: #8c2f2b; --bad-wash: #f6e2df; --gold: #b8862b; --gold-wash: #f5ead0;
+    --serif: 'Palatino Linotype', Palatino, Georgia, serif;
+    --sans: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+  body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background-color: var(--paper);
+    background-image: radial-gradient(#e4ddcd 1.6px, transparent 1.9px); background-size: 40px 40px; }
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .scene > *, .abs { position: absolute; }
+  svg .t { transform-box: fill-box; transform-origin: center; }
+
+  .ic { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .lines { left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; }
+  .wire { fill: none; stroke: #c4bcab; stroke-width: 5; stroke-linecap: round; }
+  .wire.gold { stroke: #dcb866; }
+
+  .heading { left: 0; top: 60px; width: 1920px; text-align: center; font: 600 66px/1.1 var(--serif);
+    letter-spacing: -0.01em; }
+
+  .card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: var(--sheet); border: 1px solid var(--rule); border-radius: 28px;
+    box-shadow: 0 18px 44px rgba(28, 43, 58, 0.1); }
+  .card .ic { width: 150px; height: 150px; }
+  .card .lbl { font: 600 34px var(--sans); }
+
+  .node { width: 150px; height: 150px; border-radius: 50%; background: var(--sheet); border: 3px solid var(--ink);
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 14px 34px rgba(28, 43, 58, 0.12); }
+  .node .ic { width: 86px; height: 86px; }
+  .nodelbl { text-align: center; font: 700 32px var(--sans); }
+
+  .payee { left: 1270px; width: 560px; height: 92px; display: flex; align-items: center; gap: 18px; padding: 0 22px;
+    background: var(--sheet); border: 1px solid var(--rule); border-radius: 20px;
+    box-shadow: 0 10px 26px rgba(28, 43, 58, 0.08); }
+  .payee > * { position: relative; }
+  .payee .paidbg { position: absolute; inset: -1px; border-radius: 20px; background: var(--good-wash);
+    border: 2px solid #9cc5b0; opacity: 0; }
+  .payee .who { flex: 1; min-width: 0; }
+  .payee .nm { font: 600 28px/1.15 var(--sans); white-space: nowrap; }
+  .payee .sub { font: 400 21px/1.25 var(--sans); color: var(--muted); }
+  .payee .amt { font: 600 28px var(--sans); font-variant-numeric: tabular-nums; }
+  .payee .ok { position: absolute; left: 62px; top: 52px; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--good); color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; }
+  .payee .ok .ic { width: 24px; height: 24px; stroke-width: 7; }
+  .av { width: 60px; height: 60px; flex: none; border-radius: 50%; color: #fff; font: 700 23px var(--sans);
+    display: flex; align-items: center; justify-content: center; }
+  .tiny { padding: 7px 14px; border-radius: 999px; font: 700 22px var(--sans); white-space: nowrap; }
+
+  .chip { display: flex; align-items: center; justify-content: center; gap: 14px; height: 62px; padding: 0 26px;
+    border-radius: 999px; font: 600 28px var(--sans); white-space: nowrap; }
+  .chip .ic { width: 36px; height: 36px; }
+  .badge { display: flex; align-items: center; justify-content: center; gap: 18px; border-radius: 24px;
+    font: 700 38px var(--sans); white-space: nowrap; }
+  .badge .ic { width: 50px; height: 50px; }
+  .good { background: var(--good-wash); color: var(--good); }
+  .bad { background: var(--bad-wash); color: var(--bad); }
+  .warn { background: var(--warn-wash); color: var(--warn); }
+  .gold { background: var(--gold-wash); color: #74540f; }
+  .inkfill { background: var(--ink); color: var(--paper); }
+
+  .coin { border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 35% 30%, #f7dc8f, #d4a33c 55%, #a8771f);
+    box-shadow: inset 0 0 0 12px rgba(255, 255, 255, 0.2), 0 22px 46px rgba(168, 119, 31, 0.35);
+    color: #fff8e6; font: 700 150px/1 Georgia, serif; }
+  .coin-dim { border-radius: 50%; background: #d9d4c8; }
+  .wall { left: 750px; width: 420px; height: 100px; display: flex; align-items: center; gap: 20px; padding: 0 28px;
+    background: var(--bad-wash); border: 2px solid #e2bdb8; border-radius: 18px; color: var(--bad);
+    font: 600 30px var(--sans); box-shadow: 0 10px 24px rgba(140, 47, 43, 0.1); white-space: nowrap; }
+  .wall .ic { width: 54px; height: 54px; flex: none; }
+
+  .nbox { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 40px;
+    background: var(--ink); color: var(--paper); box-shadow: 0 24px 60px rgba(28, 43, 58, 0.28); }
+  .nbox .w { font: 600 60px/1 var(--serif); letter-spacing: -0.01em; }
+  .nbox .m { margin-top: 16px; font: 500 22px var(--sans); color: #c9cfd6; }
+
+  .laptop .screen { position: absolute; left: 0; top: 0; width: 620px; height: 390px; overflow: hidden;
+    background: var(--sheet); border: 14px solid var(--ink); border-radius: 22px; }
+  .laptop .base { position: absolute; left: -60px; top: 390px; width: 740px; height: 34px; background: #2b3d50;
+    border-radius: 4px 4px 18px 18px; }
+  .laptop .base::after { content: ''; position: absolute; left: 290px; top: 0; width: 160px; height: 10px;
+    background: var(--ink); border-radius: 0 0 8px 8px; }
+  .appbar { height: 54px; display: flex; align-items: center; gap: 9px; padding: 0 20px; background: #e9e4d8;
+    font: 600 24px var(--sans); color: var(--ink); }
+  .appbar i { width: 13px; height: 13px; border-radius: 50%; background: #c4bcab; }
+  .appbar span { margin-left: 12px; }
+  .gl { display: flex; gap: 14px; align-items: center; height: 40px; padding: 0 24px; }
+  .gl span { height: 14px; border-radius: 7px; background: #e6e0d3; }
+  .gl span + span { margin-left: auto; }
+  .btn { position: absolute; right: 22px; bottom: 20px; height: 60px; padding: 0 22px; display: flex; align-items: center;
+    gap: 12px; border-radius: 14px; background: var(--ink); color: #fff; font: 600 24px var(--sans); }
+  .btn .ic { width: 30px; height: 30px; }
+  .sub-h { padding: 10px 24px 4px; font: 600 20px var(--sans); color: var(--muted); }
+  .lrow { display: flex; align-items: center; gap: 14px; height: 50px; padding: 0 24px; font: 500 25px var(--sans);
+    border-bottom: 1px solid #eee8dc; }
+  .lrow .ic { width: 30px; height: 30px; color: var(--good); stroke-width: 6; }
+  .lrow b { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .doc { background: var(--sheet); border: 1px solid var(--rule); border-radius: 22px; padding: 30px 34px;
+    box-shadow: 0 26px 60px rgba(28, 43, 58, 0.16); }
+  .doc .dh { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .doc .dh .ic { width: 58px; height: 58px; flex: none; }
+  .doc .dt { font: 700 34px/1.1 var(--sans); }
+  .doc .ds { font: 400 21px/1.3 var(--sans); color: var(--muted); }
+  .doc .row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0;
+    border-bottom: 1px solid var(--rule); font: 400 26px var(--sans); }
+  .doc .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .doc .row.tot { border-bottom: 0; font-weight: 700; }
+  .doc .row .ic { width: 30px; height: 30px; stroke-width: 6; color: var(--good); }
+  .doc .row .okl { display: flex; align-items: center; gap: 8px; color: var(--good); font-weight: 700; }
+
+  .panel { top: 190px; width: 500px; height: 560px; background: var(--sheet); border: 1px solid var(--rule);
+    border-radius: 28px; box-shadow: 0 18px 44px rgba(28, 43, 58, 0.1); }
+  .panel > * { position: absolute; }
+  .panel h3 { margin: 0; left: 0; right: 0; top: 36px; text-align: center; font: 600 42px var(--serif); }
+  .panel .note { left: 30px; right: 30px; bottom: 38px; text-align: center; font: 600 29px/1.3 var(--sans); }
+  .face { width: 150px; height: 150px; border-radius: 50%; color: #fff; display: flex; align-items: center;
+    justify-content: center; }
+  .face .ic { width: 92px; height: 92px; }
+  .facelbl { width: 200px; text-align: center; font: 600 30px var(--sans); }
+  .tick { width: 62px; height: 62px; border-radius: 50%; background: var(--good); color: #fff; display: flex;
+    align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(31, 95, 74, 0.3); }
+  .tick .ic { width: 40px; height: 40px; stroke-width: 7; }
+  .mini { width: 180px; height: 230px; background: var(--sheet); border: 2px solid var(--rule); border-radius: 16px;
+    padding: 28px 24px; box-shadow: 0 10px 26px rgba(28, 43, 58, 0.1); }
+  .mini span { display: block; height: 13px; margin-bottom: 18px; border-radius: 7px; background: #e6e0d3; }
+  .stamp { padding: 10px 22px; border: 6px solid var(--bad); border-radius: 14px; color: var(--bad);
+    background: rgba(255, 253, 248, 0.92); font: 700 38px var(--sans); letter-spacing: 0.05em; white-space: nowrap; }
+  .slash { position: relative; display: flex; }
+  .slash::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 6px; margin-top: -3px;
+    border-radius: 3px; background: #e0796f; transform: rotate(-38deg); }
+
+  .block { top: 300px; width: 300px; height: 220px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; background: var(--sheet); border: 3px solid var(--ink); border-radius: 26px;
+    font: 700 34px var(--sans); box-shadow: 0 16px 36px rgba(28, 43, 58, 0.12); }
+  .block > .ic { width: 86px; height: 86px; }
+  .block .tick { position: absolute; right: -22px; top: -22px; }
+  .mag { width: 140px; height: 140px; color: var(--ink); }
+  .mag .lens { position: absolute; left: 22px; top: 22px; width: 76px; height: 76px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.45); }
+  .mag .ic { position: absolute; inset: 0; width: 140px; height: 140px; stroke-width: 5; }
+
+  #steps { position: absolute; left: 210px; top: 50px; width: 1500px; height: 80px; display: flex; gap: 20px; opacity: 0; }
+  .pill { position: relative; flex: 1; border-radius: 999px; background: var(--sheet); border: 2px solid var(--rule);
+    color: var(--muted); overflow: hidden; }
+  .pill > div { position: absolute; inset: 0; display: flex; align-items: center; gap: 16px; padding: 0 26px;
+    font: 600 30px var(--sans); white-space: nowrap; }
+  .pill .num { width: 46px; height: 46px; flex: none; border-radius: 50%; border: 2px solid currentColor;
+    display: flex; align-items: center; justify-content: center; font: 700 24px var(--sans); }
+  .pill .num .ic { width: 30px; height: 30px; stroke-width: 7; }
+  .pill .on { background: var(--ink); color: #fff; opacity: 0; }
+  .pill .done { background: var(--good-wash); color: var(--good); opacity: 0; }
+
+  .close-line { left: 650px; width: 700px; display: flex; align-items: center; gap: 30px; font: 600 58px var(--sans); }
+  .close-line .ic { width: 72px; height: 72px; flex: none; }
+
+  #capwrap { position: absolute; left: 0; right: 0; bottom: 42px; display: flex; justify-content: center; }
+  #cap { max-width: 1640px; padding: 18px 44px 20px; border-radius: 20px; background: rgba(28, 43, 58, 0.94);
+    color: #fff; font: 500 44px/1.3 var(--sans); text-align: center; opacity: 0; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="goldfill" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#f7dc8f"/><stop offset="0.55" stop-color="#d4a33c"/><stop offset="1" stop-color="#a8771f"/>
+    </radialGradient>
+    <symbol id="i-building" viewBox="0 0 64 64"><path d="M8 56h48M16 56V14h24v42M40 28h10v28"/><path d="M23 22h3M31 22h3M23 30h3M31 30h3M23 38h3M31 38h3M44 36h2M44 44h2"/><path d="M25 56v-8h6v8"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 64 64"><path d="M8 24 32 10l24 14z"/><path d="M15 29v17M26 29v17M38 29v17M49 29v17"/><path d="M10 50h44M6 56h52"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 64 64"><rect x="8" y="18" width="48" height="34" rx="6"/><path d="M14 18l24-8 3 8"/><path d="M56 28H45a7 7 0 0 0 0 14h11"/><circle cx="46" cy="35" r="2.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-token" viewBox="0 0 64 64"><circle cx="32" cy="32" r="22"/><path d="M32 19c5 7 8 11 8 15a8 8 0 0 1-16 0c0-4 3-8 8-15z"/></symbol>
+    <symbol id="i-question" viewBox="0 0 64 64"><circle cx="32" cy="32" r="22"/><path d="M25 26a7 7 0 1 1 10.5 6c-2.5 1.4-3.5 3-3.5 5.5V39"/><circle cx="32" cy="46" r="2.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-keys" viewBox="0 0 64 64"><rect x="6" y="18" width="52" height="30" rx="5"/><path d="M13 27h3M21 27h3M29 27h3M37 27h3M45 27h3M13 34h3M21 34h3M29 34h3M37 34h3M45 34h3M20 41h24"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 64 64"><circle cx="32" cy="32" r="22"/><path d="M32 19v14l9 6"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 64 64"><rect x="10" y="14" width="44" height="40" rx="5"/><path d="M10 26h44M22 9v9M42 9v9"/><path d="M19 35h4M30 35h4M41 35h4M19 44h4M30 44h4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 64 64"><path d="M15 33l11 11 23-24"/></symbol>
+    <symbol id="i-hourglass" viewBox="0 0 64 64"><path d="M18 8h28M18 56h28"/><path d="M22 8c0 13 10 16 10 24s-10 11-10 24M42 8c0 13-10 16-10 24s10 11 10 24"/><path d="M26 53l6-7 6 7z" fill="currentColor"/></symbol>
+    <symbol id="i-mag" viewBox="0 0 64 64"><circle cx="27" cy="27" r="16"/><path d="M39 39l15 15"/></symbol>
+    <symbol id="i-person" viewBox="0 0 64 64"><circle cx="32" cy="22" r="10"/><path d="M13 55c2-11 9-17 19-17s17 6 19 17"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 64 64"><path d="M16 6h22l12 12v40H16z"/><path d="M38 6v12h12"/><path d="M23 30h20M23 38h20M23 46h13"/></symbol>
+    <symbol id="i-send" viewBox="0 0 64 64"><path d="M8 30 56 9 45 55 31 37z"/><path d="M31 37 56 9"/></symbol>
+    <symbol id="i-link" viewBox="0 0 64 64"><path d="M27 37l10-10"/><path d="M23 30l-5 5a8 8 0 0 0 11 11l5-5"/><path d="M41 34l5-5a8 8 0 0 0-11-11l-5 5"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 64 64"><circle cx="32" cy="32" r="22"/><path d="M39 24.5c-1.8-2-4.3-3-7.2-3-4.2 0-7.3 2.2-7.3 5.3 0 7.2 15 3.9 15 11 0 3.3-3.3 5.6-7.7 5.6-3.3 0-6.2-1.2-8.1-3.3M32 16v32"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 64 64"><path d="M10 32h40M38 20l12 12-12 12"/></symbol>
+    <symbol id="i-statement" viewBox="0 0 64 64"><path d="M14 6h36v52l-6-4-6 4-6-4-6 4-6-4-6 4z"/><path d="M22 20h20M22 29h20M22 38h12"/></symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+
+  <!-- 1. Paying people abroad by wire -->
+  <section class="scene" id="sc-wires">
+    <svg class="lines" viewBox="0 0 1920 1080" id="a-svg">
+      <path id="a-l0" class="wire" d="M530 500H855"/>
+    </svg>
+    <div class="heading" id="a-h">Paying people abroad is slow and costly</div>
+    <div class="node" id="a-bank" style="left:855px;top:425px"><svg class="ic"><use href="#i-bank"/></svg></div>
+    <div class="nodelbl" id="a-bank-l" style="left:780px;top:592px;width:300px">Bank wire</div>
+    <div id="a-rows"></div>
+    <div class="chip warn" id="a-days" style="left:800px;top:664px;width:260px"><svg class="ic"><use href="#i-cal"/></svg>3–5 days</div>
+    <div class="badge bad" id="a-total" style="left:700px;top:752px;width:460px;height:96px;gap:14px"><span id="a-total-n">$0</span>in fees</div>
+  </section>
+
+  <!-- 2. Digital dollars, and what stands in the way -->
+  <section class="scene" id="sc-hard">
+    <svg class="lines" viewBox="0 0 1920 1080">
+      <path id="b-l1" class="wire gold" d="M530 500H840"/>
+      <path id="b-l2" class="wire gold" d="M1080 500C1250 500 1300 450 1445 450"/>
+    </svg>
+    <div class="heading" id="b-h1">Digital dollars are fast and cheap</div>
+    <div class="heading" id="b-h2" style="opacity:0">But hard for a business to use</div>
+    <div class="heading" id="b-h3" style="opacity:0">Nostro fixes that</div>
+    <div class="chip warn" id="b-stays" style="left:170px;top:690px;width:380px">Stays with bank wires</div>
+    <div class="coin-dim" style="left:1445px;top:335px;width:230px;height:230px" id="b-coin-under"></div>
+    <div class="coin" id="b-coin" style="left:1445px;top:335px;width:230px;height:230px">$</div>
+    <div class="nodelbl" id="b-coin-l" style="left:1310px;top:588px;width:500px;font-size:36px">Digital dollars</div>
+    <div class="chip gold" id="b-c1" style="left:1350px;top:650px;width:420px"><svg class="ic"><use href="#i-clock"/></svg>Minutes, not days</div>
+    <div class="chip gold" id="b-c2" style="left:1350px;top:726px;width:420px"><svg class="ic"><use href="#i-coin"/></svg>A fraction of the cost</div>
+    <div class="wall" id="b-w0" style="top:268px"><svg class="ic"><use href="#i-wallet"/></svg>A crypto wallet</div>
+    <div class="wall" id="b-w1" style="top:384px"><svg class="ic"><use href="#i-token"/></svg>A token to pay fees</div>
+    <div class="wall" id="b-w2" style="top:500px"><svg class="ic"><use href="#i-question"/></svg>A new way of working</div>
+    <div class="wall" id="b-w3" style="top:616px"><svg class="ic"><use href="#i-keys"/></svg>Retyping by hand</div>
+    <div class="nbox" id="b-nostro" style="left:840px;top:380px;width:240px;height:240px"><div class="w">Nostro</div></div>
+    <div class="chip good" id="b-same" style="left:730px;top:656px;width:460px"><svg class="ic"><use href="#i-check"/></svg>Same file, same steps</div>
+  </section>
+
+  <!-- 3. Step 1: the file the software already makes -->
+  <section class="scene" id="sc-file">
+    <div class="doc" id="d-doc" style="left:800px;top:236px;width:460px">
+      <div class="dh"><svg class="ic"><use href="#i-doc"/></svg><div><div class="dt">Payment file</div><div class="ds">For the bank · 5 payments</div></div></div>
+      <div id="d-rows"></div>
+      <div class="row tot"><span>Total</span><b>$9,348.55</b></div>
+    </div>
+    <div class="laptop" id="d-lap" style="left:150px;top:250px">
+      <div class="screen">
+        <div class="appbar"><i></i><i></i><i></i><span>Accounting</span></div>
+        <div style="padding-top:14px">
+          <div class="gl"><span style="width:46%"></span><span style="width:18%"></span></div>
+          <div class="gl"><span style="width:38%"></span><span style="width:16%"></span></div>
+          <div class="gl"><span style="width:52%"></span><span style="width:20%"></span></div>
+          <div class="gl"><span style="width:34%"></span><span style="width:15%"></span></div>
+        </div>
+        <div class="btn" id="d-export"><svg class="ic"><use href="#i-doc"/></svg>Export payment file</div>
+      </div>
+      <div class="base"></div>
+    </div>
+    <div class="nbox" id="d-nbox" style="left:1460px;top:330px;width:280px;height:280px"><div class="w">Nostro</div></div>
+    <div class="chip good" id="d-read" style="left:1390px;top:640px;width:420px"><svg class="ic"><use href="#i-check"/></svg>5 payments read</div>
+    <div class="chip gold" id="d-same" style="left:1390px;top:716px;width:420px">Same file, unchanged</div>
+  </section>
+
+  <!-- 4. Step 2: two people, and the checks -->
+  <section class="scene" id="sc-approve">
+    <div class="panel" id="e-p1" style="left:120px">
+      <h3>Two people</h3>
+      <div class="face" id="e-a1" style="left:52px;top:142px;background:#3d5a73"><svg class="ic"><use href="#i-person"/></svg></div>
+      <div class="facelbl" id="e-l1" style="left:27px;top:308px">Sends</div>
+      <svg class="ic" id="e-arrow" style="left:218px;top:185px;width:64px;height:64px;color:var(--muted)"><use href="#i-arrow"/></svg>
+      <div class="face" id="e-a2" style="left:298px;top:142px;background:#2f7d6d"><svg class="ic"><use href="#i-person"/></svg></div>
+      <div class="facelbl" id="e-l2" style="left:273px;top:308px">Approves</div>
+      <div class="tick" id="e-chk" style="left:404px;top:128px"><svg class="ic"><use href="#i-check"/></svg></div>
+      <div class="note" id="e-n1">Nobody can approve their own payments</div>
+    </div>
+    <div class="panel" id="e-p2" style="left:710px">
+      <h3>No double payments</h3>
+      <div class="mini" id="e-d1" style="left:100px;top:120px"><span></span><span></span><span style="width:70%"></span><span></span><span style="width:55%"></span></div>
+      <div class="mini" id="e-d2" style="left:206px;top:150px"><span></span><span></span><span style="width:70%"></span><span></span><span style="width:55%"></span></div>
+      <div class="stamp" id="e-stamp" style="left:76px;top:236px">ALREADY PAID</div>
+      <div class="note" id="e-n2" style="color:var(--bad)">A repeat is refused</div>
+    </div>
+    <div class="panel" id="e-p3" style="left:1300px">
+      <h3>Changed details?</h3>
+      <div id="e-card" style="left:40px;top:122px;width:420px;height:150px;display:flex;align-items:center;gap:18px;padding:0 24px;border:1px solid var(--rule);border-radius:20px;background:#fff">
+        <div class="av" style="background:#7a4b8c">LM</div>
+        <div><div style="font:600 29px var(--sans)">Lucia Marin</div><div class="tiny warn" id="e-chg" style="display:inline-block;margin-top:8px">Account changed today</div></div>
+      </div>
+      <svg class="ic" id="e-hg" style="left:190px;top:300px;width:120px;height:120px;color:var(--warn)"><use href="#i-hourglass"/></svg>
+      <div class="note" id="e-n3" style="color:var(--warn)">Held until it is checked again</div>
+    </div>
+  </section>
+
+  <!-- 5. Step 3: everyone is paid -->
+  <section class="scene" id="sc-pay">
+    <svg class="lines" viewBox="0 0 1920 1080" id="f-svg"></svg>
+    <div class="nbox" id="f-nbox" style="left:240px;top:370px;width:260px;height:260px"><div class="w">Nostro</div><div class="m">on NEAR</div></div>
+    <div id="f-rows"></div>
+    <div class="badge good" id="f-full" style="left:110px;top:676px;width:600px;height:88px;font-size:32px"><svg class="ic"><use href="#i-check"/></svg>Lucia gets the full $2,450.75</div>
+    <div class="chip gold" id="f-fee" style="left:110px;top:780px;width:600px">The small fee is shown separately</div>
+    <div class="badge inkfill" id="f-free" style="left:110px;top:690px;width:600px;height:110px;font-size:32px;gap:22px">
+      <span class="slash"><svg class="ic" style="width:48px;height:48px"><use href="#i-wallet"/></svg></span>
+      <span class="slash"><svg class="ic" style="width:48px;height:48px"><use href="#i-token"/></svg></span>
+      No wallet. No fee token.
+    </div>
+  </section>
+
+  <!-- 6. Step 4: the books update themselves -->
+  <section class="scene" id="sc-books">
+    <div class="laptop" id="g-lap" style="left:150px;top:250px">
+      <div class="screen">
+        <div class="appbar"><i></i><i></i><i></i><span>Accounting</span></div>
+        <div class="sub-h">Bank account · statement imported</div>
+        <div id="g-rows"></div>
+      </div>
+      <div class="base"></div>
+    </div>
+    <div class="nbox" id="g-nbox" style="left:1490px;top:340px;width:260px;height:260px"><div class="w">Nostro</div></div>
+    <div class="doc" id="g-doc" style="left:780px;top:200px;width:480px">
+      <div class="dh"><svg class="ic"><use href="#i-statement"/></svg><div><div class="dt">Statement</div><div class="ds">Like the one a bank sends</div></div></div>
+      <div id="g-docrows"></div>
+      <div class="row"><span>Fees, each on its own line</span><svg class="ic"><use href="#i-check"/></svg></div>
+      <div class="row tot"><span>Closing balance</span><span class="okl"><svg class="ic"><use href="#i-check"/></svg>Adds up</span></div>
+    </div>
+    <div class="badge good" id="g-done" style="left:130px;top:716px;width:660px;height:88px;font-size:34px"><svg class="ic"><use href="#i-check"/></svg>Books up to date. No retyping.</div>
+  </section>
+
+  <!-- 7. Everything is on the record -->
+  <section class="scene" id="sc-record">
+    <svg class="lines" viewBox="0 0 1920 1080">
+      <path id="h-k0" class="wire" d="M450 410H590"/>
+      <path id="h-k1" class="wire" d="M890 410H1030"/>
+      <path id="h-k2" class="wire" d="M1330 410H1470"/>
+    </svg>
+    <div class="heading" id="h-h">Every step is on the record</div>
+    <div class="block" id="h-b0" style="left:150px"><svg class="ic"><use href="#i-send"/></svg>Sent<div class="tick" id="h-t0"><svg class="ic"><use href="#i-check"/></svg></div></div>
+    <div class="block" id="h-b1" style="left:590px"><svg class="ic"><use href="#i-person"/></svg>Approved<div class="tick" id="h-t1"><svg class="ic"><use href="#i-check"/></svg></div></div>
+    <div class="block" id="h-b2" style="left:1030px"><svg class="ic"><use href="#i-coin"/></svg>Paid<div class="tick" id="h-t2"><svg class="ic"><use href="#i-check"/></svg></div></div>
+    <div class="block" id="h-b3" style="left:1470px"><svg class="ic"><use href="#i-statement"/></svg>Statement<div class="tick" id="h-t3"><svg class="ic"><use href="#i-check"/></svg></div></div>
+    <svg class="ic" id="h-c0" style="left:488px;top:378px;width:64px;height:64px;color:var(--muted)"><use href="#i-link"/></svg>
+    <svg class="ic" id="h-c1" style="left:928px;top:378px;width:64px;height:64px;color:var(--muted)"><use href="#i-link"/></svg>
+    <svg class="ic" id="h-c2" style="left:1368px;top:378px;width:64px;height:64px;color:var(--muted)"><use href="#i-link"/></svg>
+    <div class="nodelbl" id="h-near" style="left:0;top:592px;width:1920px;font-size:40px">Recorded on NEAR, a public blockchain</div>
+    <div class="mag" id="h-mag" style="left:250px;top:250px"><div class="lens"></div><svg class="ic"><use href="#i-mag"/></svg></div>
+  </section>
+
+  <!-- 8. In one line -->
+  <section class="scene" id="sc-close">
+    <div class="heading" id="i-logo" style="top:150px;font-size:150px">Nostro</div>
+    <div class="close-line" id="i-l1" style="top:420px"><svg class="ic"><use href="#i-doc"/></svg>Payment file in.</div>
+    <div class="close-line" id="i-l2" style="top:512px"><svg class="ic" style="color:var(--gold)"><use href="#i-coin"/></svg>Digital dollars out.</div>
+    <div class="close-line" id="i-l3" style="top:604px"><svg class="ic"><use href="#i-statement"/></svg>Statement back.</div>
+    <div class="nodelbl" id="i-built" style="left:0;top:770px;width:1920px;font-size:40px">Built at NEAR HACKATHON 2026</div>
+    <div class="nodelbl" id="i-foot" style="left:0;top:836px;width:1920px;font:400 28px var(--sans);color:var(--muted)">A hackathon prototype. Not a bank.</div>
+  </section>
+
+  <!-- Stays put across the first two scenes, so it does not blink between them. -->
+  <div class="card abs" id="co" style="left:190px;top:340px;width:340px;height:320px;opacity:0">
+    <svg class="ic"><use href="#i-building"/></svg><div class="lbl">A small business</div>
+  </div>
+
+  <div id="steps">
+    <div class="pill" id="p0"><div><span class="num">1</span>Your file</div><div class="on"><span class="num">1</span>Your file</div><div class="done"><span class="num"><svg class="ic"><use href="#i-check"/></svg></span>Your file</div></div>
+    <div class="pill" id="p1"><div><span class="num">2</span>Approve</div><div class="on"><span class="num">2</span>Approve</div><div class="done"><span class="num"><svg class="ic"><use href="#i-check"/></svg></span>Approve</div></div>
+    <div class="pill" id="p2"><div><span class="num">3</span>Pay</div><div class="on"><span class="num">3</span>Pay</div><div class="done"><span class="num"><svg class="ic"><use href="#i-check"/></svg></span>Pay</div></div>
+    <div class="pill" id="p3"><div><span class="num">4</span>Books updated</div><div class="on"><span class="num">4</span>Books updated</div><div class="done"><span class="num"><svg class="ic"><use href="#i-check"/></svg></span>Books updated</div></div>
+  </div>
+
+  <div id="capwrap"><div id="cap"></div></div>
+</div>
+
+<script>
+(() => {
+  const T = window.TIMING;
+  if (!T) {
+    document.body.innerHTML = '<p style="font:24px sans-serif;padding:40px">Run scripts/record-explainer.mjs, which supplies the narration timing.</p>';
+    return;
+  }
+
+  // ---------- Timing helpers ----------
+  const lines = Object.fromEntries(T.lines.map((line) => [line.id, line]));
+  const scenes = Object.fromEntries(T.scenes.map((scene) => [scene.id, scene]));
+  const L = (id, dt = 0) => lines[id].start + dt;
+  const E = (id, dt = 0) => lines[id].end + dt;
+  const SC = (id) => scenes[id];
+  // Roughly when a word is spoken: its place in the sentence, scaled to the clip.
+  const W = (id, word, dt = 0) => {
+    const line = lines[id];
+    const at = line.say.indexOf(word);
+    if (at < 0) throw new Error(`"${word}" is not in line ${id}`);
+    return line.start + (line.end - line.start) * (at / line.say.length) + dt;
+  };
+
+  // ---------- A small keyframe engine ----------
+  const EASE = {
+    linear: (p) => p,
+    in: (p) => p * p * p,
+    out: (p) => 1 - (1 - p) ** 3,
+    inOut: (p) => (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2),
+    back: (p) => 1 + 2.70158 * (p - 1) ** 3 + 1.70158 * (p - 1) ** 2,
+  };
+  const tracks = new Map();
+  const updaters = [];
+  const $ = (target) => {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) throw new Error(`No element ${target}`);
+    return el;
+  };
+
+  function A(target) {
+    const el = $(target);
+    if (!tracks.has(el)) tracks.set(el, {});
+    const props = tracks.get(el);
+    const api = {
+      key(prop, t, value, ease = 'inOut') {
+        (props[prop] ??= []).push([t, value, ease]);
+        return api;
+      },
+      tween(prop, t0, t1, a, b, ease = 'inOut') {
+        return api.key(prop, t0, a, 'linear').key(prop, t1, b, ease);
+      },
+      show(t, { d = 0.6, x = 0, y = 26, s = 1, r = 0, ease = 'out' } = {}) {
+        api.tween('o', t, t + Math.min(d, 0.45), 0, 1, 'linear');
+        if (x) api.tween('x', t, t + d, x, 0, ease);
+        if (y) api.tween('y', t, t + d, y, 0, ease);
+        if (s !== 1) api.tween('s', t, t + d, s, 1, ease);
+        if (r) api.tween('r', t, t + d, r, 0, ease);
+        return api;
+      },
+      hide(t, { d = 0.35, x = 0, y = 0, s = 1, r = 0, ease = 'in' } = {}) {
+        api.tween('o', t, t + d, 1, 0, 'linear');
+        if (x) api.tween('x', t, t + d, 0, x, ease);
+        if (y) api.tween('y', t, t + d, 0, y, ease);
+        if (s !== 1) api.tween('s', t, t + d, 1, s, ease);
+        if (r) api.tween('r', t, t + d, 0, r, ease);
+        return api;
+      },
+      pop(t, d = 0.55) {
+        return api.tween('o', t, t + 0.12, 0, 1, 'linear').tween('s', t, t + d, 0.4, 1, 'back');
+      },
+      pulse(t, amount = 1.07, d = 0.5) {
+        return api.tween('s', t, t + d * 0.4, 1, amount, 'out').tween('s', t + d * 0.4, t + d, amount, 1, 'inOut');
+      },
+      draw(t, d = 0.7, ease = 'inOut') {
+        return api.tween('draw', t, t + d, 0, 1, ease);
+      },
+    };
+    return api;
+  }
+
+  function sample(keys, t) {
+    if (!keys.sorted) {
+      keys.sort((a, b) => a[0] - b[0]);
+      keys.sorted = true;
+    }
+    if (t <= keys[0][0]) return keys[0][1];
+    for (let i = 1; i < keys.length; i += 1) {
+      const [t1, v1, ease] = keys[i];
+      if (t < t1) {
+        const [t0, v0] = keys[i - 1];
+        const span = t1 - t0;
+        return span <= 0 ? v1 : v0 + (v1 - v0) * EASE[ease]((t - t0) / span);
+      }
+    }
+    return keys[keys.length - 1][1];
+  }
+
+  const lengths = new Map();
+  function apply(t) {
+    for (const [el, props] of tracks) {
+      const value = (name, fallback) => (props[name] ? sample(props[name], t) : fallback);
+      if (props.o) el.style.opacity = Math.max(0, Math.min(1, value('o', 1))).toFixed(3);
+      if (props.x || props.y || props.s || props.r) {
+        el.style.transform = `translate(${value('x', 0).toFixed(2)}px, ${value('y', 0).toFixed(2)}px) scale(${value('s', 1).toFixed(4)}) rotate(${value('r', 0).toFixed(2)}deg)`;
+      }
+      if (props.draw) {
+        if (!lengths.has(el)) {
+          const length = el.getTotalLength();
+          lengths.set(el, length);
+          el.style.strokeDasharray = `${length} ${length + 20}`;
+        }
+        const drawn = value('draw', 0);
+        el.style.strokeDashoffset = (lengths.get(el) * (1 - drawn)).toFixed(2);
+        // A round line cap would otherwise leave a dot where an undrawn line starts.
+        el.style.visibility = drawn > 0.001 ? 'visible' : 'hidden';
+      }
+    }
+    for (const update of updaters) update(t);
+  }
+
+  const clamp = (p) => Math.max(0, Math.min(1, p));
+  function along(path, mover, t0, t1, { p0 = 0, p1 = 1, ease = 'inOut' } = {}) {
+    const route = $(path);
+    const target = $(mover);
+    const total = route.getTotalLength();
+    updaters.push((t) => {
+      const p = p0 + (p1 - p0) * EASE[ease](clamp((t - t0) / (t1 - t0)));
+      const point = route.getPointAtLength(p * total);
+      target.setAttribute('transform', `translate(${point.x.toFixed(2)} ${point.y.toFixed(2)})`);
+    });
+  }
+  function counter(el, t0, t1, a, b, format) {
+    const target = $(el);
+    updaters.push((t) => {
+      target.textContent = format(a + (b - a) * EASE.out(clamp((t - t0) / (t1 - t0))));
+    });
+  }
+  const svgNode = (tag, attrs) => {
+    const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+    return node;
+  };
+  const coin = (radius) => {
+    const outer = svgNode('g', {});
+    const inner = svgNode('g', { class: 't' });
+    inner.append(svgNode('circle', { r: radius, fill: 'url(#goldfill)' }));
+    if (radius > 14) {
+      const sign = svgNode('text', { y: radius * 0.42, 'text-anchor': 'middle', 'font-size': radius * 1.25,
+        'font-weight': 700, 'font-family': 'Georgia, serif', fill: '#fff8e6' });
+      sign.textContent = '$';
+      inner.append(sign);
+    }
+    outer.append(inner);
+    return { outer, inner };
+  };
+
+  // ---------- Content shared by scenes ----------
+  const PAYEES = [
+    { init: 'LM', name: 'Lucia Marin', what: 'Brand design', amount: '$2,450.75', minus: '−2,450.75', color: '#7a4b8c' },
+    { init: 'TN', name: 'Tomas Novak', what: 'Backend work', amount: '$3,100.00', minus: '−3,100.00', color: '#2d6a8a' },
+    { init: 'AB', name: 'Amina Bello', what: 'Copywriting', amount: '$1,875.50', minus: '−1,875.50', color: '#a0522d' },
+    { init: 'BH', name: 'Brightwater Hosting', what: 'Web hosting', amount: '$1,280.00', minus: '−1,280.00', color: '#2f7d6d' },
+    { init: 'KF', name: 'Kestrel Freight', what: 'Shipping', amount: '$642.30', minus: '−642.30', color: '#6b6a2a' },
+  ];
+  const ROW_TOP = [244, 350, 456, 562, 668];
+  const ROW_Y = ROW_TOP.map((top) => top + 46);
+  const rows = (prefix, right) =>
+    PAYEES.map((p, i) => `<div class="payee abs" id="${prefix}-r${i}" style="top:${ROW_TOP[i]}px">
+        <div class="paidbg"></div>
+        <div class="av" style="background:${p.color}">${p.init}</div>
+        <div class="who"><div class="nm">${p.name}</div><div class="sub">${p.what}</div></div>
+        ${right(p, i)}
+        <div class="ok"><svg class="ic"><use href="#i-check"/></svg></div>
+      </div>`).join('');
+
+  $('#a-rows').innerHTML = rows('a', (_, i) => `<div class="tiny bad" id="a-fee${i}">$45 fee</div>`);
+  $('#f-rows').innerHTML = rows('f', (p) => `<div class="amt">${p.amount}</div>`);
+  $('#d-rows').innerHTML = PAYEES.map((p) => `<div class="row"><span>${p.name}</span><b>${p.amount}</b></div>`).join('');
+  $('#g-docrows').innerHTML = PAYEES.map((p) => `<div class="row"><span>${p.name}</span><b>${p.minus}</b></div>`).join('');
+  $('#g-rows').innerHTML = PAYEES.map((p, i) =>
+    `<div class="lrow" id="g-r${i}"><svg class="ic"><use href="#i-check"/></svg>${p.name}<b>${p.minus}</b></div>`).join('');
+
+  const aSvg = $('#a-svg');
+  const fSvg = $('#f-svg');
+  ROW_Y.forEach((y, i) => {
+    aSvg.append(svgNode('path', { id: `a-w${i}`, class: 'wire', d: `M1005 500C1120 500 1150 ${y} 1270 ${y}` }));
+    fSvg.append(svgNode('path', { id: `f-w${i}`, class: 'wire gold', d: `M500 500C800 500 980 ${y} 1270 ${y}` }));
+  });
+  const fCoins = ROW_Y.map(() => coin(22));
+  fCoins.forEach((c) => fSvg.append(c.outer));
+
+  // ---------- Scenes ----------
+  // One scene fades out almost before the next fades in, so their words never overlap.
+  for (const scene of T.scenes) {
+    const track = A(`#sc-${scene.id}`);
+    if (scene.start <= 0) track.key('o', 0, 1, 'linear');
+    else track.tween('o', scene.start + 0.2, scene.start + 0.55, 0, 1, 'inOut');
+    if (scene.end < T.duration - 0.01) track.tween('o', scene.end - 0.55, scene.end - 0.2, 1, 0, 'inOut');
+  }
+  A('#co').show(0.25, { x: -50, y: 0 }).hide(SC('hard').end - 0.55, { d: 0.35 });
+
+  // ---------- 1. Wires ----------
+  A('#a-h').show(0.1, { y: 18 });
+  PAYEES.forEach((_, i) => A(`#a-r${i}`).show(L('a1', 1.2 + i * 0.17), { x: 50, y: 0 }));
+  A('#a-bank').pop(L('a2', 0.05));
+  A('#a-bank-l').show(L('a2', 0.25), { y: 12 });
+  A('#a-l0').draw(L('a2', 0.2), 0.5);
+  PAYEES.forEach((_, i) => A(`#a-w${i}`).draw(L('a2', 0.6 + i * 0.08), 0.7));
+  PAYEES.forEach((_, i) => A(`#a-fee${i}`).pop(W('a3', 'forty', i * 0.1)));
+  A('#a-days').pop(W('a3', 'three', -0.1));
+  A('#a-total').pop(L('a4', 0.3));
+  counter('#a-total-n', L('a4', 0.45), W('a4', 'dollars'), 0, 225, (v) => `$${Math.round(v)}`);
+
+  // ---------- 2. Digital dollars, and the wall ----------
+  A('#b-h1').show(SC('hard').start + 0.3, { y: 18 }).hide(L('b2', -0.3));
+  A('#b-h2').show(L('b2', 0), { y: 18 }).hide(L('c1', -0.3));
+  A('#b-h3').show(L('c1', 0.1), { y: 18 });
+  A('#b-coin-under').key('o', 0, 0, 'linear').key('o', L('b4', -0.01), 0, 'linear').key('o', L('b4'), 1, 'linear')
+    .key('o', L('c1', 0.8), 1, 'linear').key('o', L('c1', 0.81), 0, 'linear');
+  A('#b-coin').pop(L('b1', 0.15), 0.7).tween('o', L('b4', 0.05), L('b4', 0.65), 1, 0.25)
+    .tween('o', L('c1', 0.25), L('c1', 0.8), 0.25, 1);
+  A('#b-coin-l').show(L('b1', 0.45), { y: 14 });
+  A('#b-c1').show(W('b1', 'minutes', -0.15), { x: 40, y: 0 });
+  A('#b-c2').show(W('b1', 'fraction', -0.15), { x: 40, y: 0 });
+  const walls = [W('b2', 'wallet', -0.35), W('b2', 'token', -0.35), W('b2', 'new way', -0.35), L('b3', 0.15)];
+  walls.forEach((t, i) => {
+    const tilt = [-6, 5, -4, 6][i];
+    A(`#b-w${i}`).show(t, { y: -420, r: tilt, d: 0.75, ease: 'back' })
+      .hide(L('c1', 0.05 + i * 0.09), { d: 0.75, y: 760, r: tilt * 5, ease: 'in' });
+  });
+  A('#b-stays').pop(L('b4', 0.25)).hide(L('c1', 0.0));
+  A('#b-nostro').pop(L('c1', 0.55), 0.65);
+  A('#b-l1').draw(L('c1', 0.9), 0.45);
+  A('#b-l2').draw(L('c1', 1.15), 0.5);
+  A('#b-same').show(W('c1', 'keeps', -0.1), { y: 16 });
+
+  // ---------- 3. Step 1: the file ----------
+  const file = SC('file');
+  A('#d-lap').show(file.start + 0.15, { x: -50, y: 0 });
+  A('#d-export').pulse(W('d1', 'payment', -0.35), 1.08, 0.45);
+  A('#d-doc').show(W('d1', 'payment', 0.05), { x: -330, y: 0, d: 0.95 })
+    .tween('x', L('d2', 0.6), L('d2', 1.5), 0, 570, 'inOut')
+    .tween('s', L('d2', 0.6), L('d2', 1.5), 1, 0.3, 'inOut')
+    .tween('o', L('d2', 1.2), L('d2', 1.5), 1, 0, 'linear');
+  A('#d-nbox').pop(L('d2', 0.0), 0.6).pulse(L('d2', 1.45), 1.06, 0.45);
+  A('#d-read').show(L('d2', 1.65), { y: 16 });
+  A('#d-same').show(W('d2', 'Nothing', 0.1), { y: 16 });
+
+  // ---------- 4. Step 2: approvals and checks ----------
+  A('#e-p1').show(SC('approve').start + 0.15, { y: 30 });
+  A('#e-a1').pop(L('e1', 0.15));
+  A('#e-l1').show(L('e1', 0.35), { y: 10 });
+  A('#e-arrow').show(W('e1', 'second', -0.35), { x: -16, y: 0 });
+  A('#e-a2').pop(W('e1', 'second', -0.1));
+  A('#e-l2').show(W('e1', 'second', 0.1), { y: 10 });
+  A('#e-chk').pop(W('e1', 'approve', 0.1));
+  A('#e-n1').show(E('e1', -0.3), { y: 10 });
+  A('#e-p2').show(L('e2', -0.35), { y: 30 });
+  A('#e-d1').show(L('e2', 0.0), { y: 14 });
+  A('#e-d2').show(L('e2', 0.3), { x: 24, y: -10 });
+  A('#e-stamp').key('r', 0, -12, 'linear').tween('o', L('e2', 0.9), L('e2', 0.98), 0, 1, 'linear')
+    .tween('s', L('e2', 0.9), L('e2', 1.15), 1.9, 1, 'out');
+  A('#e-n2').show(L('e2', 1.3), { y: 10 });
+  A('#e-p3').show(L('e3', -0.35), { y: 30 });
+  A('#e-card').show(L('e3', 0.0), { y: 14 });
+  A('#e-chg').pop(W('e3', 'change', -0.1));
+  A('#e-hg').pop(W('e3', 'waits', -0.2)).tween('r', W('e3', 'waits', 0.5), W('e3', 'waits', 1.3), 0, 180, 'inOut');
+  A('#e-n3').show(W('e3', 'checked', -0.2), { y: 10 });
+
+  // ---------- 5. Step 3: payment ----------
+  const pay = SC('pay');
+  A('#f-nbox').show(pay.start + 0.15, { x: -40, y: 0 });
+  PAYEES.forEach((_, i) => A(`#f-r${i}`).show(pay.start + 0.3 + i * 0.1, { x: 40, y: 0 }));
+  fCoins.forEach((c, i) => {
+    A(`#f-w${i}`).draw(L('f1', 0.25 + i * 0.07), 0.6);
+    const t0 = L('f1', 0.8 + i * 0.28);
+    const t1 = t0 + 1.05;
+    A(c.inner).pop(t0, 0.35).tween('o', t1 - 0.12, t1, 1, 0, 'linear');
+    along(`#f-w${i}`, c.outer, t0, t1, { ease: 'inOut' });
+    A(`#f-r${i} .paidbg`).tween('o', t1 - 0.05, t1 + 0.25, 0, 1, 'linear');
+    A(`#f-r${i} .ok`).pop(t1 - 0.02, 0.45);
+    A(`#f-r${i}`).pulse(t1 - 0.05, 1.03, 0.4);
+  });
+  [1, 2, 3, 4].forEach((i) => A(`#f-r${i}`).tween('o', L('f2', 0.1), L('f2', 0.5), 1, 0.4).tween('o', L('f3', -0.2), L('f3', 0.2), 0.4, 1));
+  A('#f-r0').pulse(L('f2', 0.1), 1.05, 0.6);
+  A('#f-full').show(L('f2', 0.3), { y: 16 }).hide(L('f3', -0.25));
+  A('#f-fee').show(W('f2', 'small', -0.1), { y: 16 }).hide(L('f3', -0.25));
+  A('#f-free').show(L('f3', 0.1), { y: 16 });
+
+  // ---------- 6. Step 4: statement and books ----------
+  const books = SC('books');
+  A('#g-lap').show(books.start + 0.15, { x: -50, y: 0 });
+  A('#g-nbox').show(books.start + 0.15, { x: 50, y: 0 });
+  A('#g-doc').key('o', 0, 0, 'linear').tween('o', L('g1', 0.35), L('g1', 0.6), 0, 1, 'linear')
+    .tween('x', L('g1', 0.35), L('g1', 1.35), 600, 0, 'out')
+    .tween('s', L('g1', 0.35), L('g1', 1.35), 0.3, 1, 'out')
+    .tween('x', L('g2', 0.1), L('g2', 1.0), 0, -560, 'inOut')
+    .tween('s', L('g2', 0.1), L('g2', 1.0), 1, 0.3, 'inOut')
+    .tween('o', L('g2', 0.75), L('g2', 1.0), 1, 0, 'linear');
+  PAYEES.forEach((_, i) => A(`#g-r${i}`).show(L('g2', 1.0 + i * 0.17), { x: -24, y: 0, d: 0.4 }));
+  A('#g-done').pop(W('g2', 'books', 0.2));
+
+  // ---------- 7. On the record ----------
+  A('#h-h').show(SC('record').start + 0.35, { y: 18 });
+  [0, 1, 2, 3].forEach((i) => A(`#h-b${i}`).show(L('h1', 0.0 + i * 0.32), { y: 30 }));
+  [0, 1, 2].forEach((i) => {
+    A(`#h-k${i}`).draw(L('h1', 0.25 + i * 0.32), 0.3);
+    A(`#h-c${i}`).pop(L('h1', 0.35 + i * 0.32), 0.45);
+  });
+  A('#h-near').show(W('h1', 'Near', -0.2), { y: 14 });
+  const sweep0 = W('h1', 'company', -0.2);
+  const sweep1 = E('h1', -0.1);
+  A('#h-mag').tween('o', sweep0 - 0.25, sweep0, 0, 1, 'linear').tween('x', sweep0, sweep1, 0, 1320, 'linear')
+    .tween('y', sweep0, sweep1, 0, 0, 'linear');
+  [0, 1, 2, 3].forEach((i) => A(`#h-t${i}`).pop(sweep0 + ((sweep1 - sweep0) * i) / 3 + 0.15, 0.45));
+  A('#h-mag').tween('o', sweep1, sweep1 + 0.3, 1, 0, 'linear');
+
+  // ---------- 8. Close ----------
+  A('#i-logo').show(L('i1', -0.3), { y: 20, s: 0.94 });
+  A('#i-l1').show(L('i2', -0.05), { x: -30, y: 0 });
+  A('#i-l2').show(L('i3', -0.05), { x: -30, y: 0 });
+  A('#i-l3').show(L('i4', -0.05), { x: -30, y: 0 });
+  A('#i-built').show(L('i5', -0.05), { y: 14 });
+  A('#i-foot').show(L('i5', 0.7), { y: 10 });
+
+  // ---------- Step bar ----------
+  const STEPS = ['file', 'approve', 'pay', 'books'];
+  A('#steps').show(SC('file').start + 0.3, { y: -16, d: 0.5 }).hide(SC('books').end - 0.6, { d: 0.35 });
+  STEPS.forEach((id, i) => {
+    const scene = SC(id);
+    const on = A(`#p${i} .on`).tween('o', scene.start, scene.start + 0.45, 0, 1);
+    if (i < STEPS.length - 1) {
+      on.tween('o', scene.end - 0.5, scene.end - 0.05, 1, 0);
+      A(`#p${i} .done`).tween('o', scene.end - 0.5, scene.end - 0.05, 0, 1);
+    }
+  });
+
+  // ---------- Captions ----------
+  // The closing card already shows its words, so it has none.
+  const cap = $('#cap');
+  const shown = T.lines.filter((line) => line.scene !== 'close');
+  const windows = shown.map((line, i) => {
+    const next = shown[i + 1];
+    const sceneEnd = scenes[line.scene].end;
+    let end = Math.min(line.end + 0.7, sceneEnd - 0.35);
+    if (next && next.scene === line.scene && next.start - line.end < 1.6) end = next.start - 0.05;
+    return { text: line.caption, start: line.start - 0.08, end };
+  });
+  windows.forEach((w, i) => {
+    w.joinPrev = i > 0 && windows[i - 1].end >= w.start - 0.06;
+    w.joinNext = i < windows.length - 1 && windows[i + 1].start <= w.end + 0.06;
+  });
+  updaters.push((t) => {
+    const w = windows.find((item) => t >= item.start && t < item.end + (item.joinNext ? 0.06 : 0));
+    if (!w) {
+      cap.style.opacity = '0';
+      return;
+    }
+    if (cap.textContent !== w.text) cap.textContent = w.text;
+    let opacity = 1;
+    if (!w.joinPrev) opacity = Math.min(opacity, (t - w.start) / 0.15);
+    if (!w.joinNext) opacity = Math.min(opacity, (w.end - t) / 0.2);
+    cap.style.opacity = clamp(opacity).toFixed(3);
+  });
+
+  window.seek = (t) => {
+    apply(t);
+    return new Promise((done) => requestAnimationFrame(() => done(true)));
+  };
+  document.fonts.ready.then(() => {
+    apply(0);
+    window.ready = true;
+  });
+})();
+</script>
+</body>
+</html>
