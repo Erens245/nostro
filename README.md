@@ -77,13 +77,14 @@ npm run preview
 
 | Part | Status |
 | --- | --- |
-| Contract | Rust, near-sdk 5.30. `cargo test` in `contract/` covers each control |
+| Contract | Rust, near-sdk 5.30. `cargo test` in `contract/` covers each control. Live on testnet as `acme.nostro-edc436.testnet` |
+| Testnet run | A full run through the same API the portal uses is in `proof/testnet-run.json`, with transaction ids. It pays 10 payments from a pain.001 and a NACHA file. Seven attempts that had to fail were refused, each by the contract, the relayer or the protocol. A customer payment arrives, and the statement's hash is fixed on chain and ties to the token balance |
 | Payment file readers | Tested on files made by third-party libraries, not by this project |
 | Statement and status writers | XML validated against ISO 20022 schemas. Every format read back by independent parsers |
 | Gasless approvals | NEP-366 delegates signed in the browser. The relayer decodes each one and refuses anything but a permitted call |
 | Fee quotes | Real, live, from 1Click with `dry: true` |
 | Transaction links | Each run step, payment and statement anchor links to its NEAR transaction on NearBlocks. The simulated preview shows ids with no link |
-| Payouts through NEAR Intents | **Code path unit-tested, not yet run with real money.** NEAR Intents has no testnet |
+| Payouts through NEAR Intents | **Code path unit-tested, not yet run with real money.** NEAR Intents has no testnet, so on testnet Nostro pays each payee directly in test USDC |
 | Real accounting software | GnuCash's importers (LibOFX, AqBanking) read our OFX, MT940 and camt.053 from the command line, with balances correct to the cent. See `proof/` and `scripts/interop-gnucash.mjs` |
 | Xero, QuickBooks, SAP, Odoo | **Not tested.** Nor has a file been clicked through GnuCash's own import screens |
 | `npm run preview` | Simulated chain. Labelled as such |
@@ -130,7 +131,7 @@ The approver's browser adds one more check that the contract can't do, because i
 
 ## Deployment
 
-`deployment.json` holds the live testnet contract, if one has been deployed from this checkout, and `proof/` holds the record of a full run. `npm run verify` then reads the chain and checks, with no keys:
+Nostro is live on testnet. The contract is `acme.nostro-edc436.testnet` and its test USDC is `usdc.nostro-edc436.testnet`. The staff accounts are listed in `deployment.json`. Test tokens have no value. `proof/` holds the record of a full run: each step with its transaction id, the refusals, the status report and the statements. `npm run verify` reads the chain and checks, with no keys:
 
 - every ledger entry adds up and the total equals the token contract's balance
 - staff accounts hold only function-call keys, limited to their own methods

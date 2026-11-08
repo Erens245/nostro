@@ -1,0 +1,116 @@
+{
+  "network": "testnet",
+  "contractId": "acme.nostro-edc436.testnet",
+  "tokenId": "usdc.nostro-edc436.testnet",
+  "explorer": "https://testnet.nearblocks.io/txns/",
+  "steps": [
+    {
+      "step": "Payees registered by the clerk and approved by the director",
+      "result": "5 payees"
+    },
+    {
+      "step": "Preview priced with live 1Click quotes",
+      "result": "route $1.27, wires $225"
+    },
+    {
+      "step": "Clerk submitted run, relayer paid the gas",
+      "result": "run 1",
+      "tx": "7d1Ns87PATx7SacmXH5wKeu7Aw51YELPuAPxKPYCpDDB"
+    },
+    {
+      "step": "Director approved the exact file",
+      "result": "run 1",
+      "tx": "HX2Qre2dpXqqVWXRR8tL2sinK6UWXcWFzM9CpckKpJfP"
+    },
+    {
+      "step": "Payments released",
+      "result": "5 sent, 0 held"
+    },
+    {
+      "step": "Lucia Marin was paid",
+      "result": "payee1.nostro-edc436.testnet holds 2450750000 token units"
+    },
+    {
+      "step": "A NACHA payroll file took the same path",
+      "result": "5 paid",
+      "tx": "B5Kug7XrTZUWcBAKb1H2mREHp1Sqi5ZxXDtGKKCfJiX2"
+    },
+    {
+      "step": "A customer payment arrived with its reference",
+      "result": "INV-3007, 1,250.00"
+    },
+    {
+      "step": "Status report and statements written",
+      "result": "see proof/"
+    },
+    {
+      "step": "Statement hash fixed on chain",
+      "result": "STMT-20261108-20261108-S11",
+      "tx": "FetecoPjH6VgvFxs8XSokMfH7JRKiqDcT5hGuJxQoPyo"
+    },
+    {
+      "step": "Statement ties to the token balance",
+      "result": "{\"ledgerBalance\":\"40424550000\",\"tokenBalance\":\"40424550000\",\"difference\":\"0\",\"ties\":true,\"ledgerFoots\":true,\"entries\":12}"
+    },
+    {
+      "step": "The clerk spent no NEAR",
+      "result": "balance stayed at 99938945238278800000000 yoctoNEAR"
+    }
+  ],
+  "refusals": [
+    {
+      "attempt": "Submitting the same file again",
+      "refusedWith": "Preview shows it as already submitted",
+      "by": "server, from the contract"
+    },
+    {
+      "attempt": "Sending the same file straight to the contract",
+      "refusedWith": "E_DUPLICATE_FILE",
+      "by": "contract"
+    },
+    {
+      "attempt": "Paying before approval",
+      "refusedWith": "E_NOT_APPROVED",
+      "by": "contract"
+    },
+    {
+      "attempt": "Approving a different file than the one submitted",
+      "refusedWith": "E_FILE_MISMATCH",
+      "by": "contract"
+    },
+    {
+      "attempt": "A clerk approving, through the relayer",
+      "refusedWith": "clerk.nostro-edc436.testnet is not a Checker.",
+      "by": "relayer"
+    },
+    {
+      "attempt": "A clerk approving, going around the relayer",
+      "refusedWith": "Access key does not allow method approve_run",
+      "by": "NEAR protocol, the key cannot call that method"
+    },
+    {
+      "attempt": "Paying a payee whose details just changed",
+      "refusedWith": "Approval wiped, line would be held",
+      "by": "contract"
+    }
+  ],
+  "statement": {
+    "statementId": "STMT-20261108-20261108-S11",
+    "entries": 12,
+    "openingUsd": "0.00",
+    "closingUsd": "40424.55",
+    "tie": {
+      "ledgerBalance": "40424550000",
+      "tokenBalance": "40424550000",
+      "difference": "0",
+      "ties": true,
+      "ledgerFoots": true,
+      "entries": 12
+    },
+    "sha256": "0ec057f9364afc21f8bc5604cb48eded96b3092f344508c93c767482e12f513e",
+    "anchored": true,
+    "anchorMatches": true,
+    "anchorBlock": "276783427",
+    "anchorTx": "FetecoPjH6VgvFxs8XSokMfH7JRKiqDcT5hGuJxQoPyo"
+  }
+}

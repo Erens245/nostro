@@ -1,0 +1,22 @@
+{
+  "network": "testnet",
+  "contractId": "acme.nostro-edc436.testnet",
+  "tokenId": "usdc.nostro-edc436.testnet",
+  "owner": "nostro-edc436.testnet",
+  "company": "Harbor and Pine Studio LLC",
+  "staff": {
+    "clerk": "clerk.nostro-edc436.testnet",
+    "cfo": "cfo.nostro-edc436.testnet",
+    "controller": "controller.nostro-edc436.testnet",
+    "settler": "settler.nostro-edc436.testnet",
+    "relayer": "relayer.nostro-edc436.testnet"
+  },
+  "routeHashes": {
+    "b7bb591bb691fd7d18bb94f7848d410b23ec6ad6512b2b37a6d62c6d1fad5f64": "5288fe7a6cf16e76f37b893b9542ca6d5a3365bc369f9f4cabe228ba57ad3a53",
+    "9d6c029b92241969b9ddc17358b11bc9b2e5b9f496184099dbd4ca7adab02ff9": "df536c61d47fa58ce6c4a071953c1e81460838af46b322da3d4f72ec8d3dc04e",
+    "8d9bb047f31b5a25a953d15b999d93b6ddc4e654bb3b315126fde79a5cf56b55": "40cc4c1ea5094a4de7e3e15ead44df51d2690944fba26ace2474388515cdba99",
+    "9cf685bd65e3490c3b76c1f9882ce77ad2b4fc9f360bcaf2820d2329c295e2dc": "34a528baf84b71f605ca7b4a7b4b8c5496bcd451279ed2dc9ccff31e534f7d5f",
+    "8bccb7e96009fdbd077471884d187bf5a63f0eb5249949505528a24c5c7c9381": "fd04c002b0311dd24e53e075a19752af65a62fe4325336ed1a4c7088f5c9fbc3"
+  },
+  "deployedAt": "2026-11-08T13:40:54.266Z"
+}

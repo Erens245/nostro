@@ -1,0 +1,16 @@
+﻿Date,Type,Description,Reference,Debit,Credit,Balance,Ledger entry,NEAR transaction
+2026-11-08,Opening balance,USDC on NEAR,,,,0.00,,
+2026-11-08,Receipt,Incoming transfer - FUNDING,FUNDING,,60000.00,60000.00,0,
+2026-11-08,Payment,Brightwater Hosting Ltd - INV-4471 Hosting October HP-1101-0001,HP-1101-0001,1280.00,,58720.00,1,https://testnet.nearblocks.io/txns/EWCbood1KDrFArRv97iMJNSLZmxXFtcjGJHeNZMZSkA4
+2026-11-08,Payment,Lucia Marin - INV-208 Brand design HP-1101-0002,HP-1101-0002,2450.75,,56269.25,2,https://testnet.nearblocks.io/txns/EWCbood1KDrFArRv97iMJNSLZmxXFtcjGJHeNZMZSkA4
+2026-11-08,Payment,Tomas Novak - INV-77 Backend work HP-1101-0003,HP-1101-0003,3100.00,,53169.25,3,https://testnet.nearblocks.io/txns/EWCbood1KDrFArRv97iMJNSLZmxXFtcjGJHeNZMZSkA4
+2026-11-08,Payment,Amina Bello - INV-1192 Copywriting HP-1101-0004,HP-1101-0004,1875.50,,51293.75,4,https://testnet.nearblocks.io/txns/EWCbood1KDrFArRv97iMJNSLZmxXFtcjGJHeNZMZSkA4
+2026-11-08,Payment,Kestrel Freight BV - INV-5530 Shipping HP-1101-0005,HP-1101-0005,642.30,,50651.45,5,https://testnet.nearblocks.io/txns/EWCbood1KDrFArRv97iMJNSLZmxXFtcjGJHeNZMZSkA4
+2026-11-08,Payment,Lucia Marin - EMP-1000 2611071855A-123456780000000,2611071855A-123456780000000,2450.75,,48200.70,6,https://testnet.nearblocks.io/txns/HGVch2YjL2amRm3b2nf3o2ri9CGT5MWzNU55X1te3uu9
+2026-11-08,Payment,Tomas Novak - EMP-1001 2611071855A-123456780000001,2611071855A-123456780000001,3100.00,,45100.70,7,https://testnet.nearblocks.io/txns/HGVch2YjL2amRm3b2nf3o2ri9CGT5MWzNU55X1te3uu9
+2026-11-08,Payment,Amina Bello - EMP-1002 2611071855A-123456780000002,2611071855A-123456780000002,1875.50,,43225.20,8,https://testnet.nearblocks.io/txns/HGVch2YjL2amRm3b2nf3o2ri9CGT5MWzNU55X1te3uu9
+2026-11-08,Payment,Owen Hart - EMP-1003 2611071855A-123456780000003,2611071855A-123456780000003,2100.25,,41124.95,9,https://testnet.nearblocks.io/txns/HGVch2YjL2amRm3b2nf3o2ri9CGT5MWzNU55X1te3uu9
+2026-11-08,Payment,Priya Raman - EMP-1004 2611071855A-123456780000004,2611071855A-123456780000004,1950.40,,39174.55,10,https://testnet.nearblocks.io/txns/HGVch2YjL2amRm3b2nf3o2ri9CGT5MWzNU55X1te3uu9
+2026-11-08,Receipt,Incoming transfer - INV-3007 Customer payment,INV-3007 Customer payment,,1250.00,40424.55,11,
+2026-11-08,Closing balance,USDC on NEAR,,,,40424.55,,
+2026-11-08,Note,"Amounts are USDC on NEAR, shown as USD at 1 USDC = 1 USD. Statement formats need a three-letter currency and USDC has none.",,,,,,
