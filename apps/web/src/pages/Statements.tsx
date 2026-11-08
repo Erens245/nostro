@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { usePortal } from '../App.tsx';
 import { postJson, request } from '../api.ts';
 import type { Verification } from '../api.ts';
-import { Loading, Money, Notice, PageHead, saveFile, shortHash, useAction, useLoad } from '../ui.tsx';
+import { Loading, Money, Notice, PageHead, TxLink, saveFile, shortHash, useAction, useLoad } from '../ui.tsx';
 
 const FORMATS = [
   { id: 'camt053', name: 'camt.053', for: 'SAP, Oracle, Odoo and other ERPs' },
@@ -13,6 +14,7 @@ const FORMATS = [
 const today = (): string => new Date().toISOString().slice(0, 10);
 
 export function Statements() {
+  const { config } = usePortal();
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const query = `from=${from}&to=${to}`;
@@ -107,6 +109,12 @@ export function Statements() {
               data.anchorMatches ? (
                 <Notice tone="good" title={`Fixed at block ${data.anchorBlock}`}>
                   The hash on chain matches this statement. <span className="mono">{shortHash(data.sha256)}</span>
+                  {data.anchorTx ? (
+                    <>
+                      {' '}
+                      Transaction <TxLink hash={data.anchorTx} explorer={config.explorerTxUrl} />.
+                    </>
+                  ) : null}
                 </Notice>
               ) : (
                 <Notice tone="bad" title="This statement has changed">

@@ -546,6 +546,28 @@ select {
   margin-top: 1rem;
 }
 
+/* A run's steps on chain */
+
+.trail {
+  margin-top: 1.75rem;
+}
+
+.trail ol {
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.trail li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
 /* Sign in */
 
 .sign-in,

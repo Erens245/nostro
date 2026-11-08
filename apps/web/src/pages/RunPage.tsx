@@ -21,6 +21,7 @@ import {
   PageHead,
   PaymentStatus,
   RunStatus,
+  TxLink,
   saveFile,
   shortHash,
   useAction,
@@ -231,6 +232,7 @@ function DecisionPanel({ detail, check, onDone }: { detail: RunDetail; check: De
 }
 
 export function RunPage({ id }: { id: number }) {
+  const { config } = usePortal();
   const { data: detail, error, refresh } = useLoad(() => request<RunDetail>(`/api/runs/${id}`), [id]);
   const { check, problem } = useDeviceCheck(detail);
   const release = useAction();
@@ -328,6 +330,7 @@ export function RunPage({ id }: { id: number }) {
             <th>Reference</th>
             <th>Status</th>
             <th>Why</th>
+            <th>Transaction</th>
             <th className="number">Amount</th>
           </tr>
         </thead>
@@ -342,9 +345,10 @@ export function RunPage({ id }: { id: number }) {
                 </td>
                 <td>{fromFile?.remittance ?? line.remittance ?? '—'}</td>
                 <td>
-                  <PaymentStatus code={line.iso.status} />
+                  <PaymentStatus code={line.iso.status} routerStatus={line.routerStatus} />
                 </td>
                 <td className="small">{line.iso.reasonText ?? '—'}</td>
+                <td>{line.txHash ? <TxLink hash={line.txHash} explorer={config.explorerTxUrl} /> : '—'}</td>
                 <td className="number">
                   <Money value={fromFile ? formatCents(fromFile.amountMinor) : line.amountUsd} />
                 </td>
@@ -371,6 +375,34 @@ export function RunPage({ id }: { id: number }) {
         <Notice tone="bad" title="Payments were not released">
           {release.error}
         </Notice>
+      ) : null}
+
+      {detail.transactions.length > 0 ? (
+        <section className="trail">
+          <h2>On chain</h2>
+          <ol>
+            {detail.transactions.map((tx) => (
+              <li key={`${tx.step}-${tx.hash}`}>
+                <span>
+                  {tx.step}
+                  {tx.by ? (
+                    <>
+                      {' by '}
+                      <span className="mono">{tx.by}</span>
+                    </>
+                  ) : null}
+                  {tx.lines ? ` · ${tx.lines.length} ${tx.lines.length === 1 ? 'payment' : 'payments'}` : null}
+                </span>
+                <TxLink hash={tx.hash} explorer={config.explorerTxUrl} />
+              </li>
+            ))}
+          </ol>
+          <p className="muted small">
+            {config.explorerTxUrl
+              ? 'Each id opens the transaction on NearBlocks, so anyone can check it.'
+              : 'Simulated chain: these ids are not on any explorer.'}
+          </p>
+        </section>
       ) : null}
     </>
   );

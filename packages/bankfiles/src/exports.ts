@@ -3,7 +3,19 @@
 
 import { formatCents } from './money.ts';
 import { PEG_NOTE, flatten, prepareStatement } from './statement.ts';
+import type { FlatRow } from './statement.ts';
 import type { CanonicalLine, CanonicalRun, StatementInput } from './types.ts';
+
+// Excel reads a CSV in the local code page unless it starts with a byte order
+// mark, and that garbles an accented payee name such as "Müller".
+const BOM = '﻿';
+
+const TYPE_LABELS: Record<FlatRow['type'], string> = {
+  payment: 'Payment',
+  fee: 'Fee',
+  receipt: 'Receipt',
+  rounding: 'Rounding',
+};
 
 function cell(value: string): string {
   // A leading = + - or @ would run as a formula in a spreadsheet.
@@ -23,22 +35,21 @@ export function writeCsv(input: StatementInput): string {
     const amount = formatCents(row.cents);
     rows.push([
       row.date,
-      row.type,
+      TYPE_LABELS[row.type],
       [row.name, row.memo].filter(Boolean).join(' - '),
       row.endToEndId ?? row.reference,
       row.direction === 'debit' ? amount : '',
       row.direction === 'credit' ? amount : '',
       formatCents(running),
       row.seq === undefined ? '' : String(row.seq),
-      row.txHash ?? '',
+      row.txHash ? `${input.explorerTxUrl ?? ''}${row.txHash}` : '',
     ]);
   }
-  rows.push([
-    input.periodTo, 'Closing balance', input.accountName, '', formatCents(statement.debitCents),
-    formatCents(statement.creditCents), formatCents(statement.closingCents), '', '',
-  ]);
+  // The balance rows carry a balance only. Totals here would be counted twice
+  // by anyone who sums the Debit or Credit column.
+  rows.push([input.periodTo, 'Closing balance', input.accountName, '', '', '', formatCents(statement.closingCents), '', '']);
   rows.push([input.periodTo, 'Note', PEG_NOTE, '', '', '', '', '', '']);
-  return `${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n`;
+  return `${BOM}${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n`;
 }
 
 export interface NearBusinessExport {

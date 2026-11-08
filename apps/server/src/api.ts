@@ -38,7 +38,7 @@ import type {
 } from './domain.ts';
 import type { OneClick } from './oneclick.ts';
 import { decodeDelegate, inspectDelegate } from './relay.ts';
-import type { Store } from './store.ts';
+import type { RunTx, Store } from './store.ts';
 
 export interface Deps {
   config: Config;
@@ -50,6 +50,14 @@ export interface Deps {
 const MAX_BODY = 10 * 1024 * 1024;
 const LEDGER_PAGE = 200;
 const MAX_ROUNDS = 40;
+
+/** Contract events that mark a step of a run, and what to call each step. */
+const RUN_STEPS: Record<string, RunTx['step']> = {
+  run_submitted: 'Submitted',
+  run_approved: 'Approved',
+  run_rejected: 'Rejected',
+};
+
 /** Median outgoing international wire fee, NerdWallet 2026 figures via Corpay. */
 const WIRE_FEE_USD = 45;
 
@@ -129,6 +137,12 @@ export function createApi(deps: Deps) {
   const { config, chain, store, oneClick } = deps;
 
   const isReadOnly = (): boolean => !config.relayer || !config.settler;
+
+  /** The simulated preview has no chain behind it, so nothing to link to. */
+  const explorerTxUrl = (): string | null => {
+    if (!config.rpcUrl) return null;
+    return config.network === 'mainnet' ? 'https://nearblocks.io/txns/' : 'https://testnet.nearblocks.io/txns/';
+  };
 
   async function allLedger(): Promise<LedgerEntry[]> {
     const length = await chain.view<number>('ledger_len');
@@ -298,6 +312,10 @@ export function createApi(deps: Deps) {
 
     const outcome = await chain.relay(signed);
     checkFailure(outcome);
+    for (const { event, data } of outcome.events) {
+      const step = RUN_STEPS[event];
+      if (step) store.recordRunTx(Number(data['run_id']), { step, hash: outcome.hash, by: inspection.senderId });
+    }
     if (body.draftId) {
       const submitted = outcome.events.find((event) => event.event === 'run_submitted');
       if (submitted) store.bindRun(body.draftId, Number(submitted.data['run_id']));
@@ -349,6 +367,7 @@ export function createApi(deps: Deps) {
     const detail = store.detail(runId);
     const holds = store.holds(runId);
     const routed = await routedStatuses(runId, chainRun);
+    const transactions = store.runTransactions(runId);
     const lines = chainRun.lines.map((line, index) => {
       const source = detail?.run.lines[index];
       const resolved = detail?.resolved.find((item) => item.index === index);
@@ -356,6 +375,9 @@ export function createApi(deps: Deps) {
         index,
         status: line.status,
         iso: lineStatus(chainRun.status, line, holds[index], routed[index]),
+        // The router's own word, so a refund can be called a refund.
+        routerStatus: routed[index] ?? null,
+        txHash: transactions.find((tx) => tx.step === 'Paid' && tx.lines?.includes(index))?.hash ?? null,
         hold: holds[index] ?? null,
         receiver: line.receiver,
         amountUsd: usd(line.amount),
@@ -370,6 +392,7 @@ export function createApi(deps: Deps) {
       ...(await runSummary(chainRun)),
       rejectedReason: chainRun.rejected_reason,
       issues: detail?.run.issues ?? [],
+      transactions,
       lines,
       recordedLines: chainRun.lines.map(({ e2e_hash, payee_key, amount, receiver }) => ({
         e2e_hash,
@@ -397,6 +420,7 @@ export function createApi(deps: Deps) {
           moved += 1;
           sent.push(Number(data['line']));
           store.recordTx(Number(data['seq']), outcome.hash);
+          store.recordRunTx(runId, { step: 'Paid', hash: outcome.hash, lines: [Number(data['line'])] });
           store.clearHold(runId, Number(data['line']));
         } else if (event === 'line_failed') {
           moved += 1;
@@ -413,6 +437,7 @@ export function createApi(deps: Deps) {
 
   async function statementInput(from: string, to: string) {
     const ledger = await allLedger();
+    const explorer = explorerTxUrl();
     return {
       ledger,
       input: buildStatement({
@@ -423,6 +448,7 @@ export function createApi(deps: Deps) {
         ledger,
         details: (runId) => store.detail(runId),
         txHashOf: (seq) => store.txHashOf(seq),
+        ...(explorer ? { explorerTxUrl: explorer } : {}),
       }),
     };
   }
@@ -445,6 +471,7 @@ export function createApi(deps: Deps) {
       anchored: anchor !== null,
       anchorMatches: anchor?.sha256 === sha256,
       anchorBlock: anchor?.block ?? null,
+      anchorTx: store.statementTxOf(input.statementId) ?? null,
     };
   }
 
@@ -498,6 +525,7 @@ export function createApi(deps: Deps) {
       60,
     );
     checkFailure(outcome);
+    store.recordStatementTx(input.statementId, outcome.hash);
     return { hash: outcome.hash, statementId: input.statementId };
   }
 
@@ -587,6 +615,7 @@ export function createApi(deps: Deps) {
         rpcUrl: config.rpcUrl,
         readOnly: isReadOnly(),
         demoKeys: config.demoKeys,
+        explorerTxUrl: explorerTxUrl(),
       });
     }
     if (method === 'GET' && path === '/api/overview') return sendJson(res, 200, await overview());

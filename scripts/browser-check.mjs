@@ -108,6 +108,15 @@ try {
     await shot('06-paid');
   });
 
+  await step('each step and payment names its transaction', async () => {
+    await page.waitFor('On chain');
+    if (!simulated) {
+      // A judge can open each one, so on a real chain they must be links.
+      const links = await page.evaluate(`document.querySelectorAll('a[href*="nearblocks.io/txns/"]').length`);
+      if (links < 3) throw new Error(`Expected links to NearBlocks for each step, found ${links}.`);
+    }
+  });
+
   await step('the statement ties to the chain', async () => {
     await page.goTo('statements');
     await page.waitFor('This statement ties to the chain', 45_000);

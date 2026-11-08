@@ -8,6 +8,8 @@ export interface PortalConfig {
   rpcUrl: string;
   readOnly: boolean;
   demoKeys: boolean;
+  /** Prefix that links a transaction hash to an explorer. Null on the simulated chain. */
+  explorerTxUrl: string | null;
 }
 
 export interface Call {
@@ -39,6 +41,10 @@ export interface RunLine {
   index: number;
   status: string;
   iso: { status: string; reasonCode?: string; reasonText?: string };
+  /** NEAR Intents' own status for a routed payment, on mainnet. */
+  routerStatus: string | null;
+  /** The transaction that paid this line. */
+  txHash: string | null;
   hold: string | null;
   receiver: string;
   amountUsd: string;
@@ -56,9 +62,18 @@ export interface Issue {
   lineIndex?: number;
 }
 
+export interface RunTx {
+  step: 'Submitted' | 'Approved' | 'Rejected' | 'Paid';
+  hash: string;
+  by?: string;
+  lines?: number[];
+}
+
 export interface RunDetail extends RunSummary {
   rejectedReason: string | null;
   issues: Issue[];
+  /** Each step of the run on chain, in order. */
+  transactions: RunTx[];
   lines: RunLine[];
   /** As the server reports them. The browser reads the chain directly when it can. */
   recordedLines: { e2e_hash: string; payee_key: string; amount: string; receiver: string }[];
@@ -135,6 +150,7 @@ export interface Verification {
   anchored: boolean;
   anchorMatches: boolean;
   anchorBlock: string | null;
+  anchorTx: string | null;
 }
 
 export class ApiError extends Error {

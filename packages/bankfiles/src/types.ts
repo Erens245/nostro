@@ -121,4 +121,9 @@ export interface StatementInput {
   /** Base units. */
   closingBalance: bigint;
   entries: StatementEntry[];
+  /**
+   * Turns a transaction hash into an explorer link when prefixed to it, for
+   * example "https://testnet.nearblocks.io/txns/". Only the CSV uses it.
+   */
+  explorerTxUrl?: string;
 }

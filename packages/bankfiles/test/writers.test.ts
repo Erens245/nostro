@@ -429,6 +429,25 @@ describe('CSV statement', () => {
     }
   });
 
+  test('opens in a spreadsheet with nothing to ask', () => {
+    const text = writeCsv({ ...sampleStatement(), explorerTxUrl: 'https://testnet.nearblocks.io/txns/' });
+    assert.ok(text.startsWith('﻿'), 'Excel needs the byte order mark to read UTF-8');
+    const rows = parseDelimited(text, ',');
+    const closing = rows.at(-2) ?? [];
+    assert.equal(closing[1], 'Closing balance');
+    assert.equal(closing[4], '', 'no totals on the balance row, which a column sum would count twice');
+    assert.equal(closing[5], '');
+    const body = rows.slice(2, -2);
+    const debits = body.reduce((sum, row) => sum + cents(row[4] || '0'), 0n);
+    const credits = body.reduce((sum, row) => sum + cents(row[5] || '0'), 0n);
+    assert.equal(cents(rows[1]?.[6] ?? '0') + credits - debits, cents(closing[6] ?? '0'), 'the column sums reconcile');
+    assert.deepEqual([...new Set(body.map((row) => row[1]))].sort(), ['Fee', 'Payment', 'Receipt']);
+    assert.ok(
+      body.some((row) => row[8]?.startsWith('https://testnet.nearblocks.io/txns/')),
+      'a transaction is a link a person can open',
+    );
+  });
+
   test('a formula in a name cannot run in a spreadsheet', () => {
     const input = sampleStatement();
     const entry = input.entries[2];

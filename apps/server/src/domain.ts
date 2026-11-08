@@ -284,6 +284,8 @@ export interface StatementContext {
   ledger: LedgerEntry[];
   details: (runId: number) => RunDetail | undefined;
   txHashOf: (seq: number) => string | undefined;
+  /** Explorer prefix for transaction links. None on the simulated chain. */
+  explorerTxUrl?: string;
 }
 
 function describeDebit(
@@ -356,6 +358,7 @@ export function buildStatement(context: StatementContext): StatementInput {
     openingBalance,
     closingBalance,
     entries,
+    ...(context.explorerTxUrl ? { explorerTxUrl: context.explorerTxUrl } : {}),
   };
 }
 

@@ -144,9 +144,33 @@ const ISO_LABELS: Record<string, { label: string; tone: Tone }> = {
   RJCT: { label: 'Rejected', tone: 'bad' },
 };
 
-export function PaymentStatus({ code }: { code: string }) {
-  const entry = ISO_LABELS[code] ?? { label: code, tone: 'plain' as Tone };
+/**
+ * A refund is reported as RJCT in a status report, but on screen it says what
+ * happened: the money came back to this account.
+ */
+export function PaymentStatus({ code, routerStatus }: { code: string; routerStatus?: string | null }) {
+  const entry =
+    routerStatus === 'REFUNDED'
+      ? { label: 'Refunded', tone: 'warn' as Tone }
+      : (ISO_LABELS[code] ?? { label: code, tone: 'plain' as Tone });
   return <Chip tone={entry.tone}>{entry.label}</Chip>;
+}
+
+/** A transaction id, linked to an explorer when a real chain is behind it. */
+export function TxLink({ hash, explorer }: { hash: string; explorer: string | null }) {
+  const shown = hash.length > 18 ? shortHash(hash) : hash;
+  if (!explorer) {
+    return (
+      <span className="mono" title="Simulated chain: there is no explorer to look this up in">
+        {shown}
+      </span>
+    );
+  }
+  return (
+    <a className="mono" href={`${explorer}${hash}`} target="_blank" rel="noreferrer" title={hash}>
+      {shown}
+    </a>
+  );
 }
 
 const PAYEE_LABELS: Record<string, { label: string; tone: Tone }> = {

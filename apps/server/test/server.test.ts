@@ -467,6 +467,20 @@ describe('the API, from file to statement', () => {
     assert.equal(executed.sent.length, 5, 'the server keeps calling until every line has gone');
     assert.equal(chain.runs[0]?.status, 'Completed');
 
+    const paid = (await (await fetch(`${url}/api/runs/${runId}`)).json()) as {
+      transactions: { step: string; hash: string; by?: string; lines?: number[] }[];
+      lines: { txHash: string | null }[];
+    };
+    assert.deepEqual(
+      paid.transactions.slice(0, 2).map((tx) => tx.step),
+      ['Submitted', 'Approved'],
+      'each step keeps its transaction, so it can be linked',
+    );
+    assert.equal(paid.transactions[0]?.by, 'clerk.testnet');
+    const payments = paid.transactions.filter((tx) => tx.step === 'Paid');
+    assert.deepEqual(payments.flatMap((tx) => tx.lines ?? []).sort(), [0, 1, 2, 3, 4]);
+    assert.ok(paid.lines.every((line) => payments.some((tx) => tx.hash === line.txHash)), 'every line has its payment');
+
     const status = await (await fetch(`${url}/api/runs/${runId}/pain002`)).text();
     assert.match(status, /<GrpSts>ACSC<\/GrpSts>/);
     assert.equal((status.match(/<TxSts>ACSC<\/TxSts>/g) ?? []).length, 5);
@@ -496,12 +510,32 @@ describe('the API, from file to statement', () => {
     const after = (await (await fetch(`${url}/api/statements/verify?from=${today}&to=${today}`)).json()) as {
       anchored: boolean;
       anchorMatches: boolean;
+      anchorTx: string | null;
     };
     assert.equal(after.anchored, true);
     assert.equal(after.anchorMatches, true);
+    assert.ok(after.anchorTx, 'the anchoring transaction is kept, so it can be linked');
 
     const again = await post('/api/statements/anchor', { from: today, to: today });
     assert.equal(again.status, 409);
+  });
+
+  test('transactions link to an explorer only when a real chain is behind the portal', async () => {
+    const simulated = (await (await fetch(`${url}/api/config`)).json()) as { explorerTxUrl: string | null };
+    assert.equal(simulated.explorerTxUrl, null, 'a simulated id would lead nowhere');
+
+    const handle = createApi({
+      config: { ...config, rpcUrl: 'https://rpc.testnet.example' },
+      chain,
+      store: new Store(mkdtempSync(join(dir, 'explorer-'))),
+      oneClick,
+    });
+    const real = createServer((req, res) => void handle(req, res));
+    await new Promise<void>((resolve) => real.listen(0, '127.0.0.1', resolve));
+    const port = (real.address() as AddressInfo).port;
+    const body = (await (await fetch(`http://127.0.0.1:${port}/api/config`)).json()) as { explorerTxUrl: string | null };
+    real.close();
+    assert.equal(body.explorerTxUrl, 'https://testnet.nearblocks.io/txns/');
   });
 
   test('the approver can fetch the exact bytes that were submitted', async () => {

@@ -31,14 +31,35 @@ export interface Draft {
   runId?: number;
 }
 
+/** One step of a run on chain, so anyone can look the transaction up. */
+export interface RunTx {
+  step: 'Submitted' | 'Approved' | 'Rejected' | 'Paid';
+  hash: string;
+  /** Who signed it, for steps staff sign. */
+  by?: string;
+  /** Lines a payment transaction paid. */
+  lines?: number[];
+}
+
 interface State {
   payees: Payee[];
   drafts: Draft[];
   holds: Record<string, Record<string, string>>;
+  /** Ledger entry number to the transaction that wrote it. */
   transactions: Record<string, string>;
+  runTransactions: Record<string, RunTx[]>;
+  /** Statement id to the transaction that fixed its hash on chain. */
+  statementTransactions: Record<string, string>;
 }
 
-const empty = (): State => ({ payees: [], drafts: [], holds: {}, transactions: {} });
+const empty = (): State => ({
+  payees: [],
+  drafts: [],
+  holds: {},
+  transactions: {},
+  runTransactions: {},
+  statementTransactions: {},
+});
 
 export class Store {
   private readonly path: string;
@@ -157,5 +178,30 @@ export class Store {
 
   txHashOf(seq: number): string | undefined {
     return this.state.transactions[seq];
+  }
+
+  /** Adds a step, merging lines when one transaction paid several. */
+  recordRunTx(runId: number, tx: RunTx): void {
+    const steps = (this.state.runTransactions[runId] ??= []);
+    const same = steps.find((item) => item.step === tx.step && item.hash === tx.hash);
+    if (!same) {
+      steps.push(tx);
+    } else if (tx.lines) {
+      same.lines = [...new Set([...(same.lines ?? []), ...tx.lines])].sort((a, b) => a - b);
+    }
+    this.save();
+  }
+
+  runTransactions(runId: number): RunTx[] {
+    return this.state.runTransactions[runId] ?? [];
+  }
+
+  recordStatementTx(statementId: string, hash: string): void {
+    this.state.statementTransactions[statementId] = hash;
+    this.save();
+  }
+
+  statementTxOf(statementId: string): string | undefined {
+    return this.state.statementTransactions[statementId];
   }
 }

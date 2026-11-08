@@ -14,6 +14,14 @@ A *nostro* account is banking's term for "our account held elsewhere".
 
 Paying a supplier or contractor abroad by wire has a median fee of $45 before FX margin, and usually takes days. Stablecoins are far cheaper, but today a finance team has to adopt a new app, a wallet and a gas token, and then re-key what comes out of it into their books. Most companies won't do that.
 
+## For the bookkeeper
+
+- **What you give it:** the payment file your accounting or payroll software already exports for the bank. That's an ISO 20022 pain.001, a NACHA file, or a CSV with name, account and amount.
+- **What you get back:** a status report for each run (pain.002), and a statement for any period as camt.053, OFX, MT940 or CSV. You import it as you would a bank statement.
+- **What a statement shows:** every payment, with its routing fee shown separately, every incoming transfer, and a running balance. If rounding to the cent leaves a difference, it appears as its own line, so the statement always adds up. Amounts are USDC shown as US dollars at 1:1, and the statement says so.
+- **What a status means:** *Pending* is waiting for approval or release. *Settled* is paid. *Rejected* is not paid, with the reason beside it. *Refunded* means the money came back to the company's account.
+- **How to check it:** every step and every payment names the NEAR transaction behind it, linked to the NearBlocks explorer. The CSV has the same link on each row, and opens in Excel as it is.
+
 ## How it works
 
 ```
@@ -56,7 +64,7 @@ npm run preview
 4. Click **Submit for approval**. You see the run waiting for approval. The clerk is offered no approve button.
 5. Click **Sign out**, then **Finance director**.
 6. Click **Approvals**, then **Run 1**. You see **Checked on this device**: the browser fetched the original file, hashed it and read it itself.
-7. Click **Approve**, then **Release payments**. Each payment shows **Settled**.
+7. Click **Approve**, then **Release payments**. Each payment shows **Settled** and the transaction that paid it, and **On chain** lists every step. On the simulated chain these ids aren't on an explorer. On testnet they link to NearBlocks.
 8. Click **Statements**. You see **This statement ties to the chain**. Download camt.053, OFX, MT940 or CSV.
 
 **3. Try to break it.** Click **Sign out**, **Finance clerk**, then **New payment run**, and choose `fixtures/pain.001.001.03.xml` again. You see **This file has already been submitted**, and the button is disabled.
@@ -74,6 +82,7 @@ npm run preview
 | Statement and status writers | XML validated against ISO 20022 schemas. Every format read back by independent parsers |
 | Gasless approvals | NEP-366 delegates signed in the browser. The relayer decodes each one and refuses anything but a permitted call |
 | Fee quotes | Real, live, from 1Click with `dry: true` |
+| Transaction links | Each run step, payment and statement anchor links to its NEAR transaction on NearBlocks. The simulated preview shows ids with no link |
 | Payouts through NEAR Intents | **Code path unit-tested, not yet run with real money.** NEAR Intents has no testnet |
 | Real accounting software | GnuCash's importers (LibOFX, AqBanking) read our OFX, MT940 and camt.053 from the command line, with balances correct to the cent. See `proof/` and `scripts/interop-gnucash.mjs` |
 | Xero, QuickBooks, SAP, Odoo | **Not tested.** Nor has a file been clicked through GnuCash's own import screens |
