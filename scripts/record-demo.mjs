@@ -112,6 +112,10 @@ const SCENES = [
       await page.waitFor('Release payments', 90_000);
       await page.clickText('Release payments');
       await page.waitFor('Settled', 180_000);
+      // On a real chain the narration is over before payment confirms. Hold the paid
+      // state, with its transactions, long enough for the screen to show it.
+      await page.evaluate(`document.querySelector('.trail')?.scrollIntoView({ block: 'center' })`);
+      await sleep(2_000);
     },
   },
   {
@@ -413,7 +417,9 @@ for (const [index, mark] of marks.entries()) {
 
   const wanted = spoken[index] + TAIL;
   let excess = inScene.reduce((sum, frame) => sum + frame.seconds, 0) - wanted;
-  for (const frame of [...inScene].sort((a, b) => b.seconds - a.seconds)) {
+  // The last frame is where the scene ends up, which is what the narration is
+  // about, so only the frames before it are shortened.
+  for (const frame of inScene.slice(0, -1).sort((a, b) => b.seconds - a.seconds)) {
     if (excess <= 0) break;
     const cut = Math.min(excess, Math.max(frame.seconds - 0.4, 0));
     frame.seconds -= cut;
@@ -444,7 +450,12 @@ wavs.forEach((path, index) => {
   mix.push(`[a${input}]`);
 });
 
-const video = ['-vf', `fps=30,scale=${WIDTH}:${HEIGHT}:flags=lanczos,format=yuv420p`];
+// Chrome's frames are full-range JPEG. Players expect video in TV range and BT.709.
+const video = [
+  '-vf',
+  `fps=30,scale=${WIDTH}:${HEIGHT}:flags=lanczos:in_range=pc:out_range=tv:in_color_matrix=bt601:out_color_matrix=bt709,`
+    + 'format=yuv420p,setparams=range=tv:colorspace=bt709:color_primaries=bt709:color_trc=bt709',
+];
 const encode = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-movflags', '+faststart'];
 const audio =
   mix.length > 0

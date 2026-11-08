@@ -69,6 +69,57 @@ function findFailure(outcome: Outcome): string | undefined {
   return undefined;
 }
 
+/** True for the RPC's "too many requests" answer, which passes if you wait. */
+export function isRateLimited(error: unknown): boolean {
+  const cause = error instanceof Error ? String((error as { cause?: unknown }).cause ?? '') : '';
+  const text = error instanceof Error ? `${error.message} ${cause}` : String(error);
+  return /\b429\b|rate limit/i.test(text);
+}
+
+/**
+ * Runs reads a couple at a time, and waits out a rate limit instead of failing.
+ * Free public RPCs answer 429 to bursts, and a single page load here can be one
+ * burst too many on a shared connection. Only reads go through this: retrying a
+ * write could send it twice.
+ */
+export class ReadQueue {
+  private readonly concurrency: number;
+  private readonly delays: readonly number[];
+  private readonly sleep: (ms: number) => Promise<void>;
+  private active = 0;
+  private readonly waiting: (() => void)[] = [];
+
+  constructor(
+    concurrency = 2,
+    delays: readonly number[] = [1_500, 3_000, 5_000, 8_000],
+    sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms)),
+  ) {
+    this.concurrency = concurrency;
+    this.delays = delays;
+    this.sleep = sleep;
+  }
+
+  async run<T>(read: () => Promise<T>): Promise<T> {
+    if (this.active < this.concurrency) this.active += 1;
+    else await new Promise<void>((done) => this.waiting.push(done)); // The slot is handed over.
+    try {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          return await read();
+        } catch (error) {
+          const delay = this.delays[attempt];
+          if (delay === undefined || !isRateLimited(error)) throw error;
+          await this.sleep(delay);
+        }
+      }
+    } finally {
+      const next = this.waiting.shift();
+      if (next) next();
+      else this.active -= 1;
+    }
+  }
+}
+
 function summarize(raw: unknown): TxOutcome {
   const outcome = raw as Outcome;
   const logs = [
@@ -89,6 +140,7 @@ export class NearChain implements Chain {
   private readonly tokenId: string;
   private readonly relayer?: Account;
   private readonly settler?: Account;
+  private readonly reads = new ReadQueue();
 
   constructor(config: Config) {
     this.provider = new JsonRpcProvider({ url: config.rpcUrl });
@@ -111,27 +163,29 @@ export class NearChain implements Chain {
   }
 
   async view<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
-    const result = await this.provider.callFunction({
-      contractId: this.contractId,
-      method,
-      args,
-    });
+    const result = await this.reads.run(() =>
+      this.provider.callFunction({ contractId: this.contractId, method, args }),
+    );
     return result as T;
   }
 
   async tokenBalance(accountId: string): Promise<bigint> {
-    const balance = await this.provider.callFunction({
-      contractId: this.tokenId,
-      method: 'ft_balance_of',
-      args: { account_id: accountId },
-    });
+    const balance = await this.reads.run(() =>
+      this.provider.callFunction({
+        contractId: this.tokenId,
+        method: 'ft_balance_of',
+        args: { account_id: accountId },
+      }),
+    );
     return BigInt(String(balance));
   }
 
   async signContext(accountId: string, publicKey: string): Promise<SignContext> {
     const [key, block] = await Promise.all([
-      this.provider.viewAccessKey({ accountId, publicKey, finalityQuery: { finality: 'final' } }),
-      this.provider.viewBlock({ finality: 'final' }),
+      this.reads.run(() =>
+        this.provider.viewAccessKey({ accountId, publicKey, finalityQuery: { finality: 'final' } }),
+      ),
+      this.reads.run(() => this.provider.viewBlock({ finality: 'final' })),
     ]);
     return { nonce: String(key.nonce), blockHeight: String(block.header.height) };
   }
