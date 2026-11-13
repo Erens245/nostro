@@ -31,7 +31,7 @@ First post, with the video attached:
 
 Reply:
 
-> Repo: (link)
+> Repo: https://github.com/Erens245/nostro
 >
 > It runs on NEAR testnet, and a full run is recorded in the repo with its transaction ids. NEAR Intents has no testnet, so cross-chain payouts are quoted live but haven't carried real money yet.
 >
@@ -69,7 +69,7 @@ If you approve a small mainnet run, replace "Settled" with the real transaction 
 | Team lead, email, team size | Yours to fill in |
 | Tracks | `realworld` |
 | NEAR account for the prize | A mainnet account a person creates. Never one made by an AI tool |
-| Repository | The public repo URL |
+| Repository | https://github.com/Erens245/nostro |
 | Demo post | The X post URL |
 | Consent | Read it and agree yourself |
 
