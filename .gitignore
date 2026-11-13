@@ -12,4 +12,5 @@ target/
 .claude/
 skills-lock.json
 schemas/cache/
-demo/
+demo/*
+!demo/nostro-demo.mp4

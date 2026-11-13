@@ -4,6 +4,8 @@ Pay from a NEAR account using the files your accounting software already exports
 
 Track: Real-World Money (`realworld`). Built at NEAR HACKATHON, November 2026.
 
+Demo video: [`demo/nostro-demo.mp4`](demo/nostro-demo.mp4), 96 seconds, recorded from the live portal on NEAR testnet.
+
 ## What it is
 
 A company's accounting or payroll software can already produce a payment file, and can already import a bank statement. Nostro accepts that same file, pays each line in stablecoins on the chain each payee chose, and returns a status report and a statement the software can read. The company changes nothing about how it works.

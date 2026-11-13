@@ -320,7 +320,7 @@ function writeViewingPage() {
   const note = simulated
     ? `<p class="note"><strong>This is a rehearsal on a simulated chain.</strong> The portal, file reading, browser
        signing and all the checks are real, and the routing costs are live quotes. No blockchain is involved yet, so
-       “settled” here is simulated. The real testnet run is scheduled for 06:01 IST.</p>`
+       “settled” here is simulated. The real testnet run is recorded in proof/.</p>`
     : `<p class="note">Recorded on NEAR testnet, contract <code>${config.contractId}</code>. Test tokens have no value.</p>`;
   const tryIt = simulated
     ? `<section>
